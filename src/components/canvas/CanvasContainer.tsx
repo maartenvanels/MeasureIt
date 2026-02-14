@@ -9,6 +9,7 @@ import { useCanvasRenderer } from '@/hooks/useCanvasRenderer';
 import { DropZone } from './DropZone';
 import { ZoomControls } from './ZoomControls';
 import { AnnotationOverlay } from './AnnotationOverlay';
+import { MeasurementNameOverlay } from './MeasurementNameOverlay';
 import { CropConfirmOverlay } from './CropConfirmOverlay';
 import { LabelBounds } from '@/types/measurement';
 
@@ -99,6 +100,7 @@ export function CanvasContainer() {
         ref={overlayCanvasRef}
         className="absolute inset-0"
       />
+      <MeasurementNameOverlay />
       <AnnotationOverlay />
       <CropConfirmOverlay containerRef={containerRef} />
       {!image && <DropZone />}

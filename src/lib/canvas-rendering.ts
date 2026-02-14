@@ -130,7 +130,8 @@ export function drawMeasurementLine(
   transform: ViewTransform,
   label: string,
   nameLabel?: string,
-  labelBoundsOut?: LabelBounds[]
+  labelBoundsOut?: LabelBounds[],
+  skipNameLabel?: boolean
 ) {
   const isRef = m.type === 'reference';
   const color = m.color ?? (isRef ? '#e11d48' : '#06b6d4');
@@ -165,7 +166,7 @@ export function drawMeasurementLine(
   }
 
   // Name label
-  if (nameLabel) {
+  if (nameLabel && !skipNameLabel) {
     const nameScreenOffset = m.nameLabelOffset
       ? { x: m.nameLabelOffset.x * transform.zoom, y: m.nameLabelOffset.y * transform.zoom }
       : undefined;
@@ -210,7 +211,8 @@ export function drawAngleMeasurement(
   angle: AngleMeasurement,
   selected: boolean,
   transform: ViewTransform,
-  labelBoundsOut?: LabelBounds[]
+  labelBoundsOut?: LabelBounds[],
+  skipNameLabel?: boolean
 ) {
   const color = angle.color ?? '#f59e0b';
   const v = imageToScreen(angle.vertex.x, angle.vertex.y, transform);
@@ -274,7 +276,7 @@ export function drawAngleMeasurement(
   }
 
   // Name label
-  if (angle.name) {
+  if (angle.name && !skipNameLabel) {
     const nameScreenOffset = angle.nameLabelOffset
       ? { x: angle.nameLabelOffset.x * transform.zoom, y: angle.nameLabelOffset.y * transform.zoom }
       : undefined;
@@ -350,7 +352,8 @@ export function drawAreaMeasurement(
   selected: boolean,
   transform: ViewTransform,
   label: string,
-  labelBoundsOut?: LabelBounds[]
+  labelBoundsOut?: LabelBounds[],
+  skipNameLabel?: boolean
 ) {
   const color = area.color ?? '#10b981';
   const screenPts = area.points.map((p) => imageToScreen(p.x, p.y, transform));
@@ -393,7 +396,7 @@ export function drawAreaMeasurement(
     labelBoundsOut.push({ measurementId: area.id, labelType: 'value', ...vb });
   }
 
-  if (area.name) {
+  if (area.name && !skipNameLabel) {
     const nameScreenOffset = area.nameLabelOffset
       ? { x: area.nameLabelOffset.x * transform.zoom, y: area.nameLabelOffset.y * transform.zoom }
       : undefined;
@@ -521,9 +524,9 @@ export function renderOverlay(
   for (const m of measurements) {
     if (m.type === 'annotation') continue; // rendered as HTML overlay
     if (m.type === 'angle') {
-      drawAngleMeasurement(ctx, m, m.id === selectedId, transform, labelBoundsOut);
+      drawAngleMeasurement(ctx, m, m.id === selectedId, transform, labelBoundsOut, true);
     } else if (m.type === 'area') {
-      drawAreaMeasurement(ctx, m, m.id === selectedId, transform, getLabel(m), labelBoundsOut);
+      drawAreaMeasurement(ctx, m, m.id === selectedId, transform, getLabel(m), labelBoundsOut, true);
     } else {
       drawMeasurementLine(
         ctx,
@@ -532,7 +535,8 @@ export function renderOverlay(
         transform,
         getLabel(m),
         m.name,
-        labelBoundsOut
+        labelBoundsOut,
+        true
       );
     }
   }
