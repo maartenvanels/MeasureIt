@@ -119,16 +119,16 @@ export function MeasurementItem({ measurement: m }: MeasurementItemProps) {
 
       {(m.type === 'measure' || m.type === 'area') && (
         <Select
-          value={(m as any).unitOverride ?? ''}
+          value={(m as any).unitOverride ?? '__default__'}
           onValueChange={(val: string) =>
-            updateMeasurement(m.id, { unitOverride: val === '' ? undefined : val })
+            updateMeasurement(m.id, { unitOverride: val === '__default__' ? undefined : val })
           }
         >
           <SelectTrigger className="h-5 w-12 border-zinc-700 bg-zinc-800/50 px-1 text-[10px]" onClick={(e: React.MouseEvent) => e.stopPropagation()}>
             <SelectValue placeholder={referenceUnit} />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="">Default</SelectItem>
+            <SelectItem value="__default__">Default</SelectItem>
             <SelectItem value="mm">mm</SelectItem>
             <SelectItem value="cm">cm</SelectItem>
             <SelectItem value="m">m</SelectItem>
