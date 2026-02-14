@@ -7,6 +7,7 @@ import { useImageLoader } from '@/hooks/useImageLoader';
 import { useCanvasInteraction } from '@/hooks/useCanvasInteraction';
 import { useCanvasRenderer } from '@/hooks/useCanvasRenderer';
 import { DropZone } from './DropZone';
+import { ZoomControls } from './ZoomControls';
 
 export function CanvasContainer() {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -92,6 +93,7 @@ export function CanvasContainer() {
         className="absolute inset-0"
       />
       {!image && <DropZone />}
+      <ZoomControls containerRef={containerRef} />
       <input type="file" id="fileInput" accept="image/*" className="hidden" />
     </div>
   );

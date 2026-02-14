@@ -61,7 +61,7 @@ export function useCanvasRenderer(
       const canvasW = rect.width;
       const canvasH = rect.height;
 
-      const { image, transform, isDrawing, drawStart, drawCurrent, angleStep, angleVertex, angleArmA } =
+      const { image, transform, isDrawing, drawStart, drawCurrent, angleStep, angleVertex, angleArmA, snapPoint } =
         useCanvasStore.getState();
       const { measurements, referenceValue, referenceUnit } =
         useMeasurementStore.getState();
@@ -122,7 +122,8 @@ export function useCanvasRenderer(
         transform,
         getLabel,
         drawState,
-        angleDrawState
+        angleDrawState,
+        snapPoint
       );
     };
 

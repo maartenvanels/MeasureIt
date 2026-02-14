@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, RefObject } from 'react';
 import { useCanvasStore } from '@/stores/useCanvasStore';
 import { useUIStore } from '@/stores/useUIStore';
 import { useMeasurementStore } from '@/stores/useMeasurementStore';
-import { screenToImage } from '@/lib/geometry';
+import { screenToImage, findSnapPoint, snapToAxis } from '@/lib/geometry';
 
 function pointerDist(a: { x: number; y: number }, b: { x: number; y: number }): number {
   return Math.sqrt((b.x - a.x) ** 2 + (b.y - a.y) ** 2);
@@ -18,6 +18,20 @@ export function useCanvasInteraction(overlayRef: RefObject<HTMLCanvasElement | n
   // Track active pointers for multi-touch
   const activePointers = useRef<Map<number, { x: number; y: number }>>(new Map());
 
+  /** Get image point with snap-to-point applied */
+  const getSnappedPoint = (mx: number, my: number) => {
+    const state = canvasStore.getState();
+    const imgPt = screenToImage(mx, my, state.transform);
+    const measurements = measurementStore.getState().measurements;
+    const snap = findSnapPoint(imgPt, measurements, state.transform);
+    if (snap) {
+      state.setSnapPoint(snap);
+      return snap;
+    }
+    state.setSnapPoint(null);
+    return imgPt;
+  };
+
   const handlePointerDown = useCallback(
     (e: PointerEvent) => {
       const canvas = overlayRef.current;
@@ -26,7 +40,6 @@ export function useCanvasInteraction(overlayRef: RefObject<HTMLCanvasElement | n
       const mx = e.clientX - rect.left;
       const my = e.clientY - rect.top;
       const mode = uiStore.getState().mode;
-      const transform = canvasStore.getState().transform;
 
       // Track pointer for touch
       activePointers.current.set(e.pointerId, { x: mx, y: my });
@@ -51,11 +64,10 @@ export function useCanvasInteraction(overlayRef: RefObject<HTMLCanvasElement | n
         return;
       }
 
-      // Left click in angle mode
+      // Left click in angle mode — use snapped point
       if (e.button === 0 && mode === 'angle') {
-        const imgPt = screenToImage(mx, my, transform);
+        const imgPt = getSnappedPoint(mx, my);
         const state = canvasStore.getState();
-        // Start angle drawing if not yet started
         if (!state.angleStep) {
           state.startAngle();
         }
@@ -64,16 +76,15 @@ export function useCanvasInteraction(overlayRef: RefObject<HTMLCanvasElement | n
           const mStore = measurementStore.getState();
           result.name = `Angle ${mStore.getAngleCount() + 1}`;
           mStore.addAngle(result);
-          // Automatically start a new angle sequence
           canvasStore.getState().startAngle();
         }
         canvas.setPointerCapture(e.pointerId);
         return;
       }
 
-      // Left click in draw mode
+      // Left click in draw mode — use snapped point
       if (e.button === 0 && (mode === 'reference' || mode === 'measure')) {
-        const imgPt = screenToImage(mx, my, transform);
+        const imgPt = getSnappedPoint(mx, my);
         canvasStore.getState().startDrawing(imgPt);
         canvas.setPointerCapture(e.pointerId);
       }
@@ -89,6 +100,7 @@ export function useCanvasInteraction(overlayRef: RefObject<HTMLCanvasElement | n
       const mx = e.clientX - rect.left;
       const my = e.clientY - rect.top;
       const state = canvasStore.getState();
+      const mode = uiStore.getState().mode;
 
       // Update tracked pointer
       if (activePointers.current.has(e.pointerId)) {
@@ -110,19 +122,31 @@ export function useCanvasInteraction(overlayRef: RefObject<HTMLCanvasElement | n
         return;
       }
 
-      if (state.isDrawing) {
+      // Check snap for visual feedback when in a drawing mode
+      if (mode !== 'none') {
         const imgPt = screenToImage(mx, my, state.transform);
-        state.updateDrawing(imgPt, e.shiftKey);
+        const measurements = measurementStore.getState().measurements;
+        const snap = findSnapPoint(imgPt, measurements, state.transform);
+        state.setSnapPoint(snap);
+      } else {
+        if (state.snapPoint) state.setSnapPoint(null);
+      }
+
+      if (state.isDrawing) {
+        const imgPt = getSnappedPoint(mx, my);
+        const snapped = e.shiftKey && state.drawStart
+          ? snapToAxis(state.drawStart, imgPt)
+          : imgPt;
+        canvasStore.setState({ drawCurrent: snapped });
       }
 
       // Update cursor position for angle in-progress preview
       if (state.angleStep) {
-        const imgPt = screenToImage(mx, my, state.transform);
-        // Store cursor position in drawCurrent for the renderer
+        const imgPt = getSnappedPoint(mx, my);
         canvasStore.setState({ drawCurrent: imgPt });
       }
     },
-    [overlayRef, canvasStore]
+    [overlayRef, canvasStore, uiStore, measurementStore]
   );
 
   const handlePointerUp = useCallback(
@@ -213,21 +237,4 @@ export function useCanvasInteraction(overlayRef: RefObject<HTMLCanvasElement | n
       canvas.removeEventListener('contextmenu', handleContextMenu);
     };
   }, [overlayRef, handlePointerDown, handlePointerMove, handlePointerUp, handleWheel, handleContextMenu]);
-}
-
-export function useMousePosition(overlayRef: RefObject<HTMLCanvasElement | null>) {
-  const getMouseImagePos = useCallback(
-    (e: PointerEvent) => {
-      const canvas = overlayRef.current;
-      if (!canvas) return null;
-      const rect = canvas.getBoundingClientRect();
-      const mx = e.clientX - rect.left;
-      const my = e.clientY - rect.top;
-      const transform = useCanvasStore.getState().transform;
-      return screenToImage(mx, my, transform);
-    },
-    [overlayRef]
-  );
-
-  return { getMouseImagePos };
 }

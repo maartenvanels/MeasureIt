@@ -291,6 +291,30 @@ export function drawInProgressAngle(
   ctx.restore();
 }
 
+export function drawSnapIndicator(
+  ctx: CanvasRenderingContext2D,
+  point: Point,
+  transform: ViewTransform
+) {
+  const s = imageToScreen(point.x, point.y, transform);
+  ctx.save();
+
+  // Outer ring
+  ctx.strokeStyle = '#22d3ee';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.arc(s.x, s.y, 10, 0, Math.PI * 2);
+  ctx.stroke();
+
+  // Inner dot
+  ctx.fillStyle = '#22d3ee';
+  ctx.beginPath();
+  ctx.arc(s.x, s.y, 3, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.restore();
+}
+
 export function renderOverlay(
   ctx: CanvasRenderingContext2D,
   canvasWidth: number,
@@ -309,7 +333,8 @@ export function renderOverlay(
     vertex: Point | null;
     armA: Point | null;
     cursorPos: Point | null;
-  }
+  },
+  snapPoint?: Point | null
 ) {
   ctx.clearRect(0, 0, canvasWidth, canvasHeight);
 
@@ -347,5 +372,10 @@ export function renderOverlay(
       angleDrawState.cursorPos,
       transform
     );
+  }
+
+  // Draw snap indicator last (on top of everything)
+  if (snapPoint) {
+    drawSnapIndicator(ctx, snapPoint, transform);
   }
 }

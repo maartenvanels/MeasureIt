@@ -1,4 +1,4 @@
-import { Point, ViewTransform } from '@/types/measurement';
+import { Point, ViewTransform, AnyMeasurement } from '@/types/measurement';
 
 export function pixelDist(a: Point, b: Point): number {
   return Math.sqrt((b.x - a.x) ** 2 + (b.y - a.y) ** 2);
@@ -42,4 +42,45 @@ export function calcAngleDeg(vertex: Point, armA: Point, armB: Point): number {
   if (magA === 0 || magB === 0) return 0;
   const cosAngle = Math.max(-1, Math.min(1, dot / (magA * magB)));
   return (Math.acos(cosAngle) * 180) / Math.PI;
+}
+
+/** Collect all unique endpoints from all measurements (in image space) */
+export function getAllEndpoints(measurements: AnyMeasurement[]): Point[] {
+  const points: Point[] = [];
+  for (const m of measurements) {
+    if (m.type === 'angle') {
+      points.push(m.vertex, m.armA, m.armB);
+    } else {
+      points.push(m.start, m.end);
+    }
+  }
+  return points;
+}
+
+/**
+ * Find the nearest snap point within a screen-space threshold.
+ * Returns the image-space point if found, or null.
+ */
+export function findSnapPoint(
+  imgPoint: Point,
+  measurements: AnyMeasurement[],
+  transform: ViewTransform,
+  screenThreshold = 12
+): Point | null {
+  const endpoints = getAllEndpoints(measurements);
+  const screenPt = imageToScreen(imgPoint.x, imgPoint.y, transform);
+
+  let nearest: Point | null = null;
+  let nearestDist = Infinity;
+
+  for (const ep of endpoints) {
+    const epScreen = imageToScreen(ep.x, ep.y, transform);
+    const d = pixelDist(screenPt, epScreen);
+    if (d < screenThreshold && d < nearestDist) {
+      nearestDist = d;
+      nearest = ep;
+    }
+  }
+
+  return nearest;
 }

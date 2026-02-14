@@ -16,12 +16,16 @@ interface CanvasState {
   pinchStartDist: number | null;
   pinchStartZoom: number | null;
 
+  // Snap state
+  snapPoint: Point | null;
+
   // Angle drawing state
   angleStep: 'vertex' | 'armA' | 'armB' | null;
   angleVertex: Point | null;
   angleArmA: Point | null;
 
   setImage: (img: HTMLImageElement, fileName?: string) => void;
+  setSnapPoint: (p: Point | null) => void;
   setTransform: (t: Partial<ViewTransform>) => void;
   fitImageToContainer: (containerWidth: number, containerHeight: number) => void;
   zoomAtPoint: (screenX: number, screenY: number, delta: number) => void;
@@ -37,6 +41,10 @@ interface CanvasState {
   startPinchZoom: (dist: number) => void;
   updatePinchZoom: (dist: number, centerX: number, centerY: number) => void;
   stopPinchZoom: () => void;
+
+  // Zoom controls
+  zoomIn: () => void;
+  zoomOut: () => void;
 
   // Angle drawing actions
   startAngle: () => void;
@@ -58,12 +66,16 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
   pinchStartDist: null,
   pinchStartZoom: null,
 
+  // Snap
+  snapPoint: null,
+
   // Angle drawing
   angleStep: null,
   angleVertex: null,
   angleArmA: null,
 
   setImage: (img, fileName) => set({ image: img, imageFileName: fileName ?? null }),
+  setSnapPoint: (p) => set({ snapPoint: p }),
 
   setTransform: (t) =>
     set({ transform: { ...get().transform, ...t } }),
@@ -167,6 +179,18 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
   },
 
   stopPinchZoom: () => set({ pinchStartDist: null, pinchStartZoom: null }),
+
+  // Zoom controls (zoom toward center of canvas)
+  zoomIn: () => {
+    const { transform } = get();
+    const newZoom = Math.min(transform.zoom * 1.3, 50);
+    set({ transform: { ...transform, zoom: newZoom } });
+  },
+  zoomOut: () => {
+    const { transform } = get();
+    const newZoom = Math.max(transform.zoom / 1.3, 0.05);
+    set({ transform: { ...transform, zoom: newZoom } });
+  },
 
   // Angle drawing
   startAngle: () => set({ angleStep: 'vertex', angleVertex: null, angleArmA: null }),
