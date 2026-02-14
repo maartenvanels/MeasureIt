@@ -1,0 +1,73 @@
+'use client';
+
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { useUIStore } from '@/stores/useUIStore';
+
+export function HelpDialog() {
+  const open = useUIStore((s) => s.helpDialogOpen);
+  const setOpen = useUIStore((s) => s.setHelpDialogOpen);
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle className="text-xl">How to use MeasureIt</DialogTitle>
+        </DialogHeader>
+        <ol className="mt-2 space-y-3 text-sm text-zinc-300">
+          <li className="flex gap-3">
+            <span className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-rose-600 text-xs font-bold text-white">
+              1
+            </span>
+            <span>
+              <strong className="text-zinc-100">Load an image</strong> — drag &
+              drop, use the button, or paste from clipboard (Ctrl+V)
+            </span>
+          </li>
+          <li className="flex gap-3">
+            <span className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-rose-600 text-xs font-bold text-white">
+              2
+            </span>
+            <span>
+              <strong className="text-zinc-100">Draw a reference line</strong>{' '}
+              — click Reference (or press R), then draw a line over a known
+              dimension in the image
+            </span>
+          </li>
+          <li className="flex gap-3">
+            <span className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-rose-600 text-xs font-bold text-white">
+              3
+            </span>
+            <span>
+              <strong className="text-zinc-100">Enter the real value</strong> —
+              type the actual measurement (e.g. 50 mm) in the toolbar
+            </span>
+          </li>
+          <li className="flex gap-3">
+            <span className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-rose-600 text-xs font-bold text-white">
+              4
+            </span>
+            <span>
+              <strong className="text-zinc-100">Measure anything</strong> —
+              click Measure (or press M), draw lines, and the real dimensions
+              are calculated automatically!
+            </span>
+          </li>
+        </ol>
+        <div className="mt-4 rounded-lg bg-zinc-900 p-3 text-xs text-zinc-500">
+          <strong className="text-zinc-400">Pro tips:</strong> Hold Shift for
+          perfectly horizontal/vertical lines. Scroll to zoom. Middle-click to
+          pan. Double-click a name to rename it.
+        </div>
+        <Button onClick={() => setOpen(false)} className="mt-2 w-full">
+          Got it!
+        </Button>
+      </DialogContent>
+    </Dialog>
+  );
+}
