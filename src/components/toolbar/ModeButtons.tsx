@@ -1,6 +1,6 @@
 'use client';
 
-import { Ruler, PenLine, TriangleRight } from 'lucide-react';
+import { Ruler, PenLine, TriangleRight, Hexagon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Tooltip,
@@ -61,6 +61,21 @@ export function ModeButtons() {
           </Button>
         </TooltipTrigger>
         <TooltipContent>Measure an angle (A)</TooltipContent>
+      </Tooltip>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button
+            variant={mode === 'area' ? 'default' : 'outline'}
+            size="sm"
+            onClick={() => toggleMode('area')}
+            disabled={!image}
+            className={mode === 'area' ? 'bg-emerald-600 hover:bg-emerald-700 text-white' : ''}
+          >
+            <Hexagon className="mr-1.5 h-4 w-4" />
+            Area
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent>Measure an area (P)</TooltipContent>
       </Tooltip>
     </div>
   );

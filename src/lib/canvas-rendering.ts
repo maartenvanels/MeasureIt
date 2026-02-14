@@ -1,4 +1,4 @@
-import { Measurement, AngleMeasurement, AnyMeasurement, ViewTransform, DrawMode, Point } from '@/types/measurement';
+import { Measurement, AngleMeasurement, AreaMeasurement, AnyMeasurement, ViewTransform, DrawMode, Point } from '@/types/measurement';
 import { imageToScreen } from './geometry';
 
 function roundRect(
@@ -291,6 +291,113 @@ export function drawInProgressAngle(
   ctx.restore();
 }
 
+export function drawAreaMeasurement(
+  ctx: CanvasRenderingContext2D,
+  area: AreaMeasurement,
+  selected: boolean,
+  transform: ViewTransform,
+  label: string
+) {
+  const color = '#10b981'; // emerald
+  const screenPts = area.points.map((p) => imageToScreen(p.x, p.y, transform));
+
+  ctx.save();
+  ctx.globalAlpha = selected ? 1 : 0.85;
+
+  // Fill polygon
+  ctx.fillStyle = selected ? 'rgba(16, 185, 129, 0.15)' : 'rgba(16, 185, 129, 0.08)';
+  ctx.beginPath();
+  screenPts.forEach((p, i) => (i === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y)));
+  ctx.closePath();
+  ctx.fill();
+
+  // Stroke polygon
+  ctx.strokeStyle = color;
+  ctx.lineWidth = selected ? 3 : 2;
+  ctx.beginPath();
+  screenPts.forEach((p, i) => (i === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y)));
+  ctx.closePath();
+  ctx.stroke();
+
+  // Draw dots at vertices
+  for (const p of screenPts) {
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, 4, 0, Math.PI * 2);
+    ctx.fillStyle = color;
+    ctx.fill();
+  }
+
+  // Label at centroid
+  const cx = screenPts.reduce((s, p) => s + p.x, 0) / screenPts.length;
+  const cy = screenPts.reduce((s, p) => s + p.y, 0) / screenPts.length;
+  drawLabel(ctx, cx, cy, label, color);
+
+  if (area.name) {
+    drawLabel(ctx, cx, cy + 22, area.name, '#71717a', 11);
+  }
+
+  ctx.restore();
+}
+
+export function drawInProgressArea(
+  ctx: CanvasRenderingContext2D,
+  points: Point[],
+  cursorPos: Point | null,
+  transform: ViewTransform
+) {
+  if (points.length === 0) return;
+  const color = '#10b981';
+  const screenPts = points.map((p) => imageToScreen(p.x, p.y, transform));
+
+  ctx.save();
+
+  // Fill preview
+  if (screenPts.length >= 2) {
+    ctx.fillStyle = 'rgba(16, 185, 129, 0.06)';
+    ctx.beginPath();
+    screenPts.forEach((p, i) => (i === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y)));
+    if (cursorPos) {
+      const c = imageToScreen(cursorPos.x, cursorPos.y, transform);
+      ctx.lineTo(c.x, c.y);
+    }
+    ctx.closePath();
+    ctx.fill();
+  }
+
+  // Draw lines between placed points
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 2;
+  ctx.setLineDash([6, 4]);
+  ctx.beginPath();
+  screenPts.forEach((p, i) => (i === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y)));
+  // Line to cursor
+  if (cursorPos) {
+    const c = imageToScreen(cursorPos.x, cursorPos.y, transform);
+    ctx.lineTo(c.x, c.y);
+  }
+  ctx.stroke();
+
+  // Draw dots
+  for (const p of screenPts) {
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, 4, 0, Math.PI * 2);
+    ctx.fillStyle = color;
+    ctx.fill();
+  }
+
+  // Highlight first point for closing
+  if (screenPts.length >= 3) {
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 2;
+    ctx.setLineDash([]);
+    ctx.beginPath();
+    ctx.arc(screenPts[0].x, screenPts[0].y, 8, 0, Math.PI * 2);
+    ctx.stroke();
+  }
+
+  ctx.restore();
+}
+
 export function drawSnapIndicator(
   ctx: CanvasRenderingContext2D,
   point: Point,
@@ -334,6 +441,10 @@ export function renderOverlay(
     armA: Point | null;
     cursorPos: Point | null;
   },
+  areaDrawState?: {
+    points: Point[];
+    cursorPos: Point | null;
+  },
   snapPoint?: Point | null
 ) {
   ctx.clearRect(0, 0, canvasWidth, canvasHeight);
@@ -341,6 +452,8 @@ export function renderOverlay(
   for (const m of measurements) {
     if (m.type === 'angle') {
       drawAngleMeasurement(ctx, m, m.id === selectedId, transform);
+    } else if (m.type === 'area') {
+      drawAreaMeasurement(ctx, m, m.id === selectedId, transform, getLabel(m));
     } else {
       drawMeasurementLine(
         ctx,
@@ -372,6 +485,10 @@ export function renderOverlay(
       angleDrawState.cursorPos,
       transform
     );
+  }
+
+  if (areaDrawState && areaDrawState.points.length > 0) {
+    drawInProgressArea(ctx, areaDrawState.points, areaDrawState.cursorPos, transform);
   }
 
   // Draw snap indicator last (on top of everything)

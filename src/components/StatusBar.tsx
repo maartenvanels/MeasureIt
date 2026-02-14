@@ -11,6 +11,7 @@ const modeLabels: Record<string, string> = {
   reference: 'Reference',
   measure: 'Measure',
   angle: 'Angle',
+  area: 'Area',
 };
 
 export function StatusBar() {

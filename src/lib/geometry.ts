@@ -48,7 +48,9 @@ export function calcAngleDeg(vertex: Point, armA: Point, armB: Point): number {
 export function getAllEndpoints(measurements: AnyMeasurement[]): Point[] {
   const points: Point[] = [];
   for (const m of measurements) {
-    if (m.type === 'angle') {
+    if (m.type === 'area') {
+      points.push(...m.points);
+    } else if (m.type === 'angle') {
       points.push(m.vertex, m.armA, m.armB);
     } else {
       points.push(m.start, m.end);
@@ -83,4 +85,16 @@ export function findSnapPoint(
   }
 
   return nearest;
+}
+
+/** Calculate polygon area using the Shoelace formula (in pixel² units) */
+export function calcPolygonArea(points: Point[]): number {
+  if (points.length < 3) return 0;
+  let area = 0;
+  for (let i = 0; i < points.length; i++) {
+    const j = (i + 1) % points.length;
+    area += points[i].x * points[j].y;
+    area -= points[j].x * points[i].y;
+  }
+  return Math.abs(area) / 2;
 }

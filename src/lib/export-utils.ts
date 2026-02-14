@@ -1,7 +1,7 @@
-import { Measurement, AnyMeasurement, Unit } from '@/types/measurement';
+import { Measurement, AreaMeasurement, AnyMeasurement, Unit } from '@/types/measurement';
 import { calcRealValue } from './calculations';
-import { drawMeasurementLine, drawAngleMeasurement } from './canvas-rendering';
-import { calcRealDistance } from './calculations';
+import { drawMeasurementLine, drawAngleMeasurement, drawAreaMeasurement } from './canvas-rendering';
+import { calcRealDistance, calcRealArea } from './calculations';
 
 export function generateCSV(
   measurements: AnyMeasurement[],
@@ -9,16 +9,19 @@ export function generateCSV(
   refUnit: Unit,
   reference?: Measurement
 ): string {
-  let csv = `Name,Type,Pixel Length,Real Value (${refUnit}),Angle (deg)\n`;
+  let csv = `Name,Type,Pixel Length,Real Value (${refUnit}),Angle (deg),Pixel Area,Real Area (${refUnit}\u00B2)\n`;
   for (const m of measurements) {
-    if (m.type === 'angle') {
-      csv += `"${m.name}",angle,,,"${m.angleDeg.toFixed(2)}"\n`;
+    if (m.type === 'area') {
+      const realArea = calcRealArea(m.pixelArea, reference, refValue, refUnit);
+      csv += `"${m.name}",area,,,,${m.pixelArea.toFixed(2)},"${realArea ?? ''}"\n`;
+    } else if (m.type === 'angle') {
+      csv += `"${m.name}",angle,,,"${m.angleDeg.toFixed(2)}",,\n`;
     } else {
       const real =
         m.type === 'reference'
           ? refValue
           : calcRealValue(m.pixelLength, reference, refValue);
-      csv += `"${m.name}",${m.type},${m.pixelLength.toFixed(2)},${real?.toFixed(2) ?? ''},\n`;
+      csv += `"${m.name}",${m.type},${m.pixelLength.toFixed(2)},${real?.toFixed(2) ?? ''},,, \n`;
     }
   }
   return csv;
@@ -31,6 +34,17 @@ export function generateJSON(
   reference?: Measurement
 ): string {
   const data = measurements.map((m) => {
+    if (m.type === 'area') {
+      const realArea = calcRealArea(m.pixelArea, reference, refValue, refUnit);
+      return {
+        name: m.name,
+        type: 'area' as const,
+        pixelArea: Math.round(m.pixelArea * 100) / 100,
+        realArea: realArea ?? null,
+        unit: refUnit,
+        points: m.points.map((p) => ({ x: Math.round(p.x), y: Math.round(p.y) })),
+      };
+    }
     if (m.type === 'angle') {
       return {
         name: m.name,
@@ -72,8 +86,11 @@ export function generateClipboardText(
 ): string {
   let text = 'Measurements:\n';
   for (const m of measurements) {
-    if (m.type === 'angle') {
-      text += `  ${m.name}: ${m.angleDeg.toFixed(1)}°\n`;
+    if (m.type === 'area') {
+      const val = calcRealArea(m.pixelArea, reference, refValue, refUnit) ?? `${m.pixelArea.toFixed(0)} px\u00B2`;
+      text += `  ${m.name}: ${val}\n`;
+    } else if (m.type === 'angle') {
+      text += `  ${m.name}: ${m.angleDeg.toFixed(1)}\u00B0\n`;
     } else {
       const val =
         m.type === 'reference'
@@ -103,7 +120,10 @@ export async function renderAnnotatedImage(
   const transform = { panX: 0, panY: 0, zoom: 1 };
 
   for (const m of measurements) {
-    if (m.type === 'angle') {
+    if (m.type === 'area') {
+      const label = calcRealArea(m.pixelArea, reference, refValue, refUnit) ?? `${m.pixelArea.toFixed(0)} px\u00B2`;
+      drawAreaMeasurement(ctx, m, false, transform, label);
+    } else if (m.type === 'angle') {
       drawAngleMeasurement(ctx, m, false, transform);
     } else {
       const label =

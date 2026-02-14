@@ -5,7 +5,7 @@ import { useCanvasStore } from '@/stores/useCanvasStore';
 import { useMeasurementStore } from '@/stores/useMeasurementStore';
 import { useUIStore } from '@/stores/useUIStore';
 import { renderImage, renderOverlay } from '@/lib/canvas-rendering';
-import { calcRealDistance } from '@/lib/calculations';
+import { calcRealDistance, calcRealArea } from '@/lib/calculations';
 import { pixelDist } from '@/lib/geometry';
 import { Measurement, AnyMeasurement } from '@/types/measurement';
 
@@ -61,7 +61,7 @@ export function useCanvasRenderer(
       const canvasW = rect.width;
       const canvasH = rect.height;
 
-      const { image, transform, isDrawing, drawStart, drawCurrent, angleStep, angleVertex, angleArmA, snapPoint } =
+      const { image, transform, isDrawing, drawStart, drawCurrent, angleStep, angleVertex, angleArmA, areaPoints, snapPoint } =
         useCanvasStore.getState();
       const { measurements, referenceValue, referenceUnit } =
         useMeasurementStore.getState();
@@ -80,7 +80,10 @@ export function useCanvasRenderer(
       const ref = measurements.find((m): m is Measurement => m.type === 'reference');
       const getLabel = (m: AnyMeasurement) => {
         if (m.type === 'angle') {
-          return `${m.angleDeg.toFixed(1)}°`;
+          return `${m.angleDeg.toFixed(1)}\u00B0`;
+        }
+        if (m.type === 'area') {
+          return calcRealArea(m.pixelArea, ref, referenceValue, referenceUnit) ?? `${m.pixelArea.toFixed(0)} px\u00B2`;
         }
         if (m.type === 'reference') {
           return `${referenceValue} ${referenceUnit} (ref)`;
@@ -112,6 +115,15 @@ export function useCanvasRenderer(
         };
       }
 
+      // Area draw state for in-progress polygon
+      let areaDrawState: Parameters<typeof renderOverlay>[9];
+      if (mode === 'area' && areaPoints.length > 0) {
+        areaDrawState = {
+          points: areaPoints,
+          cursorPos: drawCurrent,
+        };
+      }
+
       // Render overlay
       renderOverlay(
         overlayCtx,
@@ -123,6 +135,7 @@ export function useCanvasRenderer(
         getLabel,
         drawState,
         angleDrawState,
+        areaDrawState,
         snapPoint
       );
     };

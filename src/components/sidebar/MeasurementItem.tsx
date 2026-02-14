@@ -2,10 +2,10 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { X } from 'lucide-react';
-import { AnyMeasurement } from '@/types/measurement';
+import { AnyMeasurement, AreaMeasurement } from '@/types/measurement';
 import { useMeasurementStore } from '@/stores/useMeasurementStore';
 import { useUIStore } from '@/stores/useUIStore';
-import { calcRealDistance } from '@/lib/calculations';
+import { calcRealDistance, calcRealArea } from '@/lib/calculations';
 
 interface MeasurementItemProps {
   measurement: AnyMeasurement;
@@ -26,15 +26,18 @@ export function MeasurementItem({ measurement: m }: MeasurementItemProps) {
 
   const isRef = m.type === 'reference';
   const isAngle = m.type === 'angle';
+  const isArea = m.type === 'area';
   const isSelected = m.id === selectedId;
-  const color = isRef ? 'bg-rose-500' : isAngle ? 'bg-amber-500' : 'bg-cyan-500';
+  const color = isRef ? 'bg-rose-500' : isAngle ? 'bg-amber-500' : isArea ? 'bg-emerald-500' : 'bg-cyan-500';
 
-  const displayValue = m.type === 'angle'
-    ? `${m.angleDeg.toFixed(1)}°`
-    : m.type === 'reference'
-      ? `${referenceValue} ${referenceUnit}`
-      : (calcRealDistance(m.pixelLength, reference, referenceValue, referenceUnit) ??
-        `${m.pixelLength.toFixed(1)} px`);
+  const displayValue = isArea
+    ? (calcRealArea((m as AreaMeasurement).pixelArea, reference, referenceValue, referenceUnit) ?? `${(m as AreaMeasurement).pixelArea.toFixed(0)} px\u00B2`)
+    : isAngle
+      ? `${m.angleDeg.toFixed(1)}\u00B0`
+      : m.type === 'reference'
+        ? `${referenceValue} ${referenceUnit}`
+        : (calcRealDistance(m.pixelLength, reference, referenceValue, referenceUnit) ??
+          `${m.pixelLength.toFixed(1)} px`);
 
   useEffect(() => {
     if (editing && inputRef.current) {
@@ -56,7 +59,7 @@ export function MeasurementItem({ measurement: m }: MeasurementItemProps) {
     <div
       className={`group flex items-center gap-2 rounded-md px-2.5 py-2 text-sm transition-colors cursor-pointer ${
         isSelected ? 'bg-zinc-800' : 'hover:bg-zinc-800/50'
-      } ${isRef ? 'border-l-2 border-rose-500' : isAngle ? 'border-l-2 border-amber-500' : 'border-l-2 border-cyan-500'}`}
+      } ${isRef ? 'border-l-2 border-rose-500' : isAngle ? 'border-l-2 border-amber-500' : isArea ? 'border-l-2 border-emerald-500' : 'border-l-2 border-cyan-500'}`}
       onClick={() => selectMeasurement(m.id)}
     >
       <div className={`h-2.5 w-2.5 flex-shrink-0 rounded-full ${color}`} />
@@ -92,7 +95,7 @@ export function MeasurementItem({ measurement: m }: MeasurementItemProps) {
 
       <span
         className={`flex-shrink-0 font-semibold tabular-nums ${
-          isRef ? 'text-rose-400' : isAngle ? 'text-amber-400' : 'text-cyan-400'
+          isRef ? 'text-rose-400' : isAngle ? 'text-amber-400' : isArea ? 'text-emerald-400' : 'text-cyan-400'
         }`}
       >
         {displayValue}

@@ -1,6 +1,6 @@
 import { create } from 'zustand';
-import { Point, ViewTransform, AngleMeasurement } from '@/types/measurement';
-import { pixelDist, snapToAxis, calcAngleDeg } from '@/lib/geometry';
+import { Point, ViewTransform, AngleMeasurement, AreaMeasurement } from '@/types/measurement';
+import { pixelDist, snapToAxis, calcAngleDeg, calcPolygonArea } from '@/lib/geometry';
 
 interface CanvasState {
   image: HTMLImageElement | null;
@@ -23,6 +23,9 @@ interface CanvasState {
   angleStep: 'vertex' | 'armA' | 'armB' | null;
   angleVertex: Point | null;
   angleArmA: Point | null;
+
+  // Polygon drawing state
+  areaPoints: Point[];
 
   setImage: (img: HTMLImageElement, fileName?: string) => void;
   setSnapPoint: (p: Point | null) => void;
@@ -50,6 +53,11 @@ interface CanvasState {
   startAngle: () => void;
   placeAnglePoint: (pt: Point) => AngleMeasurement | null;
   cancelAngle: () => void;
+
+  // Area drawing actions
+  addAreaPoint: (pt: Point) => void;
+  finishArea: () => AreaMeasurement | null;
+  cancelArea: () => void;
 }
 
 export const useCanvasStore = create<CanvasState>((set, get) => ({
@@ -73,6 +81,9 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
   angleStep: null,
   angleVertex: null,
   angleArmA: null,
+
+  // Polygon drawing
+  areaPoints: [],
 
   setImage: (img, fileName) => set({ image: img, imageFileName: fileName ?? null }),
   setSnapPoint: (p) => set({ snapPoint: p }),
@@ -224,4 +235,28 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
   },
 
   cancelAngle: () => set({ angleStep: null, angleVertex: null, angleArmA: null }),
+
+  // Area drawing
+  addAreaPoint: (pt) => {
+    set({ areaPoints: [...get().areaPoints, pt] });
+  },
+  finishArea: () => {
+    const { areaPoints } = get();
+    if (areaPoints.length < 3) {
+      set({ areaPoints: [] });
+      return null;
+    }
+    const pixelArea = calcPolygonArea(areaPoints);
+    const result: AreaMeasurement = {
+      id: crypto.randomUUID(),
+      type: 'area',
+      points: [...areaPoints],
+      pixelArea,
+      name: '',
+      createdAt: Date.now(),
+    };
+    set({ areaPoints: [] });
+    return result;
+  },
+  cancelArea: () => set({ areaPoints: [] }),
 }));

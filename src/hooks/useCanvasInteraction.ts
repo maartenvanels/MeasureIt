@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, RefObject } from 'react';
 import { useCanvasStore } from '@/stores/useCanvasStore';
 import { useUIStore } from '@/stores/useUIStore';
 import { useMeasurementStore } from '@/stores/useMeasurementStore';
-import { screenToImage, findSnapPoint, snapToAxis } from '@/lib/geometry';
+import { screenToImage, findSnapPoint, snapToAxis, imageToScreen } from '@/lib/geometry';
 
 function pointerDist(a: { x: number; y: number }, b: { x: number; y: number }): number {
   return Math.sqrt((b.x - a.x) ** 2 + (b.y - a.y) ** 2);
@@ -61,6 +61,34 @@ export function useCanvasInteraction(overlayRef: RefObject<HTMLCanvasElement | n
         canvasStore.getState().startPanning({ x: mx, y: my });
         canvas.setPointerCapture(e.pointerId);
         e.preventDefault();
+        return;
+      }
+
+      // Left click in area mode
+      if (e.button === 0 && mode === 'area') {
+        const imgPt = getSnappedPoint(mx, my);
+        const state = canvasStore.getState();
+        const areaPoints = state.areaPoints;
+
+        // Check if clicking near first point to close polygon
+        if (areaPoints.length >= 3) {
+          const firstPt = areaPoints[0];
+          const firstScreen = imageToScreen(firstPt.x, firstPt.y, state.transform);
+          const clickDist = pointerDist({ x: mx, y: my }, firstScreen);
+          if (clickDist < 15) {
+            const result = state.finishArea();
+            if (result) {
+              const mStore = measurementStore.getState();
+              result.name = `Area ${mStore.getAreaCount() + 1}`;
+              mStore.addArea(result);
+            }
+            canvas.setPointerCapture(e.pointerId);
+            return;
+          }
+        }
+
+        state.addAreaPoint(imgPt);
+        canvas.setPointerCapture(e.pointerId);
         return;
       }
 
@@ -145,6 +173,12 @@ export function useCanvasInteraction(overlayRef: RefObject<HTMLCanvasElement | n
         const imgPt = getSnappedPoint(mx, my);
         canvasStore.setState({ drawCurrent: imgPt });
       }
+
+      // Update cursor position for area in-progress preview
+      if (mode === 'area' && state.areaPoints.length > 0) {
+        const imgPt = getSnappedPoint(mx, my);
+        canvasStore.setState({ drawCurrent: imgPt });
+      }
     },
     [overlayRef, canvasStore, uiStore, measurementStore]
   );
@@ -210,6 +244,23 @@ export function useCanvasInteraction(overlayRef: RefObject<HTMLCanvasElement | n
     [overlayRef, canvasStore]
   );
 
+  const handleDoubleClick = useCallback(
+    (e: MouseEvent) => {
+      const mode = uiStore.getState().mode;
+      if (mode !== 'area') return;
+      const state = canvasStore.getState();
+      if (state.areaPoints.length >= 3) {
+        const result = state.finishArea();
+        if (result) {
+          const mStore = measurementStore.getState();
+          result.name = `Area ${mStore.getAreaCount() + 1}`;
+          mStore.addArea(result);
+        }
+      }
+    },
+    [canvasStore, uiStore, measurementStore]
+  );
+
   const handleContextMenu = useCallback((e: Event) => {
     e.preventDefault();
   }, []);
@@ -223,6 +274,7 @@ export function useCanvasInteraction(overlayRef: RefObject<HTMLCanvasElement | n
     canvas.addEventListener('pointerup', handlePointerUp);
     canvas.addEventListener('pointercancel', handlePointerUp);
     canvas.addEventListener('wheel', handleWheel, { passive: false });
+    canvas.addEventListener('dblclick', handleDoubleClick);
     canvas.addEventListener('contextmenu', handleContextMenu);
 
     // Enable touch-action none for proper pointer events on touch
@@ -234,7 +286,8 @@ export function useCanvasInteraction(overlayRef: RefObject<HTMLCanvasElement | n
       canvas.removeEventListener('pointerup', handlePointerUp);
       canvas.removeEventListener('pointercancel', handlePointerUp);
       canvas.removeEventListener('wheel', handleWheel);
+      canvas.removeEventListener('dblclick', handleDoubleClick);
       canvas.removeEventListener('contextmenu', handleContextMenu);
     };
-  }, [overlayRef, handlePointerDown, handlePointerMove, handlePointerUp, handleWheel, handleContextMenu]);
+  }, [overlayRef, handlePointerDown, handlePointerMove, handlePointerUp, handleWheel, handleDoubleClick, handleContextMenu]);
 }

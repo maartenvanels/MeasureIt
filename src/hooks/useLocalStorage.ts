@@ -66,7 +66,9 @@ export function useLocalStorage() {
       // Clear current and load saved measurements
       store.clearAll();
       for (const m of project.measurements) {
-        if (m.type === 'angle') {
+        if (m.type === 'area') {
+          store.addArea(m);
+        } else if (m.type === 'angle') {
           store.addAngle(m);
         } else {
           store.addMeasurement(m);

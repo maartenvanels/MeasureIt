@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { Measurement, AngleMeasurement, AnyMeasurement, Unit } from '@/types/measurement';
+import { Measurement, AngleMeasurement, AreaMeasurement, AnyMeasurement, Unit } from '@/types/measurement';
 
 interface MeasurementState {
   measurements: AnyMeasurement[];
@@ -10,6 +10,7 @@ interface MeasurementState {
 
   addMeasurement: (m: Measurement) => void;
   addAngle: (a: AngleMeasurement) => void;
+  addArea: (a: AreaMeasurement) => void;
   removeMeasurement: (id: string) => void;
   renameMeasurement: (id: string, name: string) => void;
   setReferenceValue: (value: number) => void;
@@ -20,6 +21,7 @@ interface MeasurementState {
   getReference: () => Measurement | undefined;
   getMeasureCount: () => number;
   getAngleCount: () => number;
+  getAreaCount: () => number;
 }
 
 export const useMeasurementStore = create<MeasurementState>((set, get) => ({
@@ -56,6 +58,12 @@ export const useMeasurementStore = create<MeasurementState>((set, get) => ({
       past,
       future: [],
     });
+  },
+
+  addArea: (a) => {
+    const { measurements } = get();
+    const past = [...get().past, [...measurements]].slice(-50);
+    set({ measurements: [...measurements, a], past, future: [] });
   },
 
   removeMeasurement: (id) => {
@@ -111,4 +119,5 @@ export const useMeasurementStore = create<MeasurementState>((set, get) => ({
   getReference: () => get().measurements.find((m): m is Measurement => m.type === 'reference'),
   getMeasureCount: () => get().measurements.filter((m) => m.type === 'measure').length,
   getAngleCount: () => get().measurements.filter((m) => m.type === 'angle').length,
+  getAreaCount: () => get().measurements.filter((m) => m.type === 'area').length,
 }));

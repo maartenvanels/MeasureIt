@@ -1,5 +1,5 @@
-export type MeasurementType = 'reference' | 'measure' | 'angle';
-export type DrawMode = 'none' | 'reference' | 'measure' | 'angle';
+export type MeasurementType = 'reference' | 'measure' | 'angle' | 'area';
+export type DrawMode = 'none' | 'reference' | 'measure' | 'angle' | 'area';
 export type Unit = 'mm' | 'cm' | 'm' | 'in' | 'px';
 
 export interface Point {
@@ -28,7 +28,16 @@ export interface AngleMeasurement {
   createdAt: number;
 }
 
-export type AnyMeasurement = Measurement | AngleMeasurement;
+export interface AreaMeasurement {
+  id: string;
+  type: 'area';
+  points: Point[];
+  pixelArea: number;
+  name: string;
+  createdAt: number;
+}
+
+export type AnyMeasurement = Measurement | AngleMeasurement | AreaMeasurement;
 
 export interface ViewTransform {
   panX: number;

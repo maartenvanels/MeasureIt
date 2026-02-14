@@ -21,3 +21,15 @@ export function calcRealValue(
   const ratio = refValue / reference.pixelLength;
   return pixelLength * ratio;
 }
+
+export function calcRealArea(
+  pixelArea: number,
+  reference: Measurement | undefined,
+  refValue: number,
+  refUnit: Unit
+): string | null {
+  if (!reference) return null;
+  const scale = refValue / reference.pixelLength;
+  const realArea = pixelArea * scale * scale;
+  return `${realArea.toFixed(2)} ${refUnit}\u00B2`;
+}
