@@ -15,7 +15,7 @@ export function useKeyboardShortcuts() {
       const { toggleMode, selectMeasurement, selectedMeasurementId } =
         useUIStore.getState();
       const { undo, redo, removeMeasurement } = useMeasurementStore.getState();
-      const { cancelDrawing, isDrawing } = useCanvasStore.getState();
+      const { cancelDrawing, isDrawing, cancelAngle, angleStep } = useCanvasStore.getState();
 
       switch (e.key.toLowerCase()) {
         case 'r':
@@ -24,9 +24,14 @@ export function useKeyboardShortcuts() {
         case 'm':
           if (!e.ctrlKey && !e.metaKey) toggleMode('measure');
           break;
+        case 'a':
+          if (!e.ctrlKey && !e.metaKey) toggleMode('angle');
+          break;
         case 'escape':
           if (isDrawing) {
             cancelDrawing();
+          } else if (angleStep) {
+            cancelAngle();
           } else {
             useUIStore.getState().setMode('none');
             selectMeasurement(null);

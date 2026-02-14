@@ -1,4 +1,4 @@
-import { Measurement, ViewTransform, DrawMode, Point } from '@/types/measurement';
+import { Measurement, AngleMeasurement, AnyMeasurement, ViewTransform, DrawMode, Point } from '@/types/measurement';
 import { imageToScreen } from './geometry';
 
 function roundRect(
@@ -166,32 +166,166 @@ export function drawInProgressLine(
   ctx.restore();
 }
 
+export function drawAngleMeasurement(
+  ctx: CanvasRenderingContext2D,
+  angle: AngleMeasurement,
+  selected: boolean,
+  transform: ViewTransform
+) {
+  const color = '#f59e0b'; // orange
+  const v = imageToScreen(angle.vertex.x, angle.vertex.y, transform);
+  const a = imageToScreen(angle.armA.x, angle.armA.y, transform);
+  const b = imageToScreen(angle.armB.x, angle.armB.y, transform);
+
+  ctx.save();
+  ctx.globalAlpha = selected ? 1 : 0.85;
+
+  // Draw arms
+  ctx.strokeStyle = color;
+  ctx.lineWidth = selected ? 3 : 2;
+  ctx.beginPath();
+  ctx.moveTo(a.x, a.y);
+  ctx.lineTo(v.x, v.y);
+  ctx.lineTo(b.x, b.y);
+  ctx.stroke();
+
+  // Draw arc at vertex
+  const angleA = Math.atan2(a.y - v.y, a.x - v.x);
+  const angleB = Math.atan2(b.y - v.y, b.x - v.x);
+  const arcRadius = Math.min(30, Math.max(15, 20 * transform.zoom));
+  ctx.beginPath();
+  ctx.arc(v.x, v.y, arcRadius, angleA, angleB, false);
+  // Check if we need to draw the shorter arc
+  let diff = angleB - angleA;
+  if (diff < 0) diff += Math.PI * 2;
+  if (diff > Math.PI) {
+    ctx.beginPath();
+    ctx.arc(v.x, v.y, arcRadius, angleA, angleB, true);
+  }
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+
+  // Draw dots at vertex, armA, armB
+  for (const pt of [v, a, b]) {
+    ctx.beginPath();
+    ctx.arc(pt.x, pt.y, 4, 0, Math.PI * 2);
+    ctx.fillStyle = color;
+    ctx.fill();
+  }
+
+  // Draw angle label
+  const labelAngle = (angleA + angleB) / 2;
+  // Adjust for the shorter arc
+  let labelAngleAdj = labelAngle;
+  if (diff > Math.PI) {
+    labelAngleAdj = labelAngle + Math.PI;
+  }
+  const labelDist = arcRadius + 18;
+  const lx = v.x + labelDist * Math.cos(labelAngleAdj);
+  const ly = v.y + labelDist * Math.sin(labelAngleAdj);
+  drawLabel(ctx, lx, ly, `${angle.angleDeg.toFixed(1)}°`, color);
+
+  // Name label
+  if (angle.name) {
+    drawLabel(ctx, lx, ly + 22, angle.name, '#71717a', 11);
+  }
+
+  ctx.restore();
+}
+
+export function drawInProgressAngle(
+  ctx: CanvasRenderingContext2D,
+  vertex: Point | null,
+  armA: Point | null,
+  cursorPos: Point | null,
+  transform: ViewTransform
+) {
+  const color = '#f59e0b';
+  ctx.save();
+  ctx.setLineDash([6, 4]);
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 2;
+
+  if (vertex) {
+    const v = imageToScreen(vertex.x, vertex.y, transform);
+
+    // Draw dot at vertex
+    ctx.beginPath();
+    ctx.arc(v.x, v.y, 5, 0, Math.PI * 2);
+    ctx.fillStyle = color;
+    ctx.fill();
+
+    if (armA) {
+      const a = imageToScreen(armA.x, armA.y, transform);
+
+      // Draw first arm
+      ctx.beginPath();
+      ctx.moveTo(v.x, v.y);
+      ctx.lineTo(a.x, a.y);
+      ctx.stroke();
+
+      // Draw dot at armA
+      ctx.beginPath();
+      ctx.arc(a.x, a.y, 4, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Draw line to cursor for second arm
+      if (cursorPos) {
+        const c = imageToScreen(cursorPos.x, cursorPos.y, transform);
+        ctx.beginPath();
+        ctx.moveTo(v.x, v.y);
+        ctx.lineTo(c.x, c.y);
+        ctx.stroke();
+      }
+    } else if (cursorPos) {
+      // Draw line from vertex to cursor for first arm
+      const c = imageToScreen(cursorPos.x, cursorPos.y, transform);
+      ctx.beginPath();
+      ctx.moveTo(v.x, v.y);
+      ctx.lineTo(c.x, c.y);
+      ctx.stroke();
+    }
+  }
+
+  ctx.restore();
+}
+
 export function renderOverlay(
   ctx: CanvasRenderingContext2D,
   canvasWidth: number,
   canvasHeight: number,
-  measurements: Measurement[],
+  measurements: AnyMeasurement[],
   selectedId: string | null,
   transform: ViewTransform,
-  getLabel: (m: Measurement) => string,
+  getLabel: (m: AnyMeasurement) => string,
   drawState?: {
     start: Point;
     current: Point;
     mode: DrawMode;
     label: string;
+  },
+  angleDrawState?: {
+    vertex: Point | null;
+    armA: Point | null;
+    cursorPos: Point | null;
   }
 ) {
   ctx.clearRect(0, 0, canvasWidth, canvasHeight);
 
   for (const m of measurements) {
-    drawMeasurementLine(
-      ctx,
-      m,
-      m.id === selectedId,
-      transform,
-      getLabel(m),
-      m.name
-    );
+    if (m.type === 'angle') {
+      drawAngleMeasurement(ctx, m, m.id === selectedId, transform);
+    } else {
+      drawMeasurementLine(
+        ctx,
+        m,
+        m.id === selectedId,
+        transform,
+        getLabel(m),
+        m.name
+      );
+    }
   }
 
   if (drawState) {
@@ -202,6 +336,16 @@ export function renderOverlay(
       drawState.mode,
       transform,
       drawState.label
+    );
+  }
+
+  if (angleDrawState) {
+    drawInProgressAngle(
+      ctx,
+      angleDrawState.vertex,
+      angleDrawState.armA,
+      angleDrawState.cursorPos,
+      transform
     );
   }
 }

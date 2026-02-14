@@ -1,6 +1,6 @@
 'use client';
 
-import { Ruler, PenLine } from 'lucide-react';
+import { Ruler, PenLine, TriangleRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Tooltip,
@@ -46,6 +46,21 @@ export function ModeButtons() {
           </Button>
         </TooltipTrigger>
         <TooltipContent>Draw a measurement line (M)</TooltipContent>
+      </Tooltip>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button
+            variant={mode === 'angle' ? 'default' : 'outline'}
+            size="sm"
+            onClick={() => toggleMode('angle')}
+            disabled={!image}
+            className={mode === 'angle' ? 'bg-amber-600 hover:bg-amber-700 text-white' : ''}
+          >
+            <TriangleRight className="mr-1.5 h-4 w-4" />
+            Angle
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent>Measure an angle (A)</TooltipContent>
       </Tooltip>
     </div>
   );

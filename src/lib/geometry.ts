@@ -30,3 +30,16 @@ export function snapToAxis(start: Point, current: Point): Point {
 export function lineAngle(a: Point, b: Point): number {
   return Math.atan2(b.y - a.y, b.x - a.x);
 }
+
+export function calcAngleDeg(vertex: Point, armA: Point, armB: Point): number {
+  const ax = armA.x - vertex.x;
+  const ay = armA.y - vertex.y;
+  const bx = armB.x - vertex.x;
+  const by = armB.y - vertex.y;
+  const dot = ax * bx + ay * by;
+  const magA = Math.sqrt(ax * ax + ay * ay);
+  const magB = Math.sqrt(bx * bx + by * by);
+  if (magA === 0 || magB === 0) return 0;
+  const cosAngle = Math.max(-1, Math.min(1, dot / (magA * magB)));
+  return (Math.acos(cosAngle) * 180) / Math.PI;
+}

@@ -1,6 +1,6 @@
 import { create } from 'zustand';
-import { Point, ViewTransform } from '@/types/measurement';
-import { pixelDist, snapToAxis } from '@/lib/geometry';
+import { Point, ViewTransform, AngleMeasurement } from '@/types/measurement';
+import { pixelDist, snapToAxis, calcAngleDeg } from '@/lib/geometry';
 
 interface CanvasState {
   image: HTMLImageElement | null;
@@ -11,6 +11,15 @@ interface CanvasState {
   drawCurrent: Point | null;
   isPanning: boolean;
   panAnchor: Point | null;
+
+  // Pinch-to-zoom state
+  pinchStartDist: number | null;
+  pinchStartZoom: number | null;
+
+  // Angle drawing state
+  angleStep: 'vertex' | 'armA' | 'armB' | null;
+  angleVertex: Point | null;
+  angleArmA: Point | null;
 
   setImage: (img: HTMLImageElement, fileName?: string) => void;
   setTransform: (t: Partial<ViewTransform>) => void;
@@ -23,6 +32,16 @@ interface CanvasState {
   startPanning: (screenPoint: Point) => void;
   updatePanning: (screenPoint: Point) => void;
   stopPanning: () => void;
+
+  // Pinch-to-zoom actions
+  startPinchZoom: (dist: number) => void;
+  updatePinchZoom: (dist: number, centerX: number, centerY: number) => void;
+  stopPinchZoom: () => void;
+
+  // Angle drawing actions
+  startAngle: () => void;
+  placeAnglePoint: (pt: Point) => AngleMeasurement | null;
+  cancelAngle: () => void;
 }
 
 export const useCanvasStore = create<CanvasState>((set, get) => ({
@@ -34,6 +53,15 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
   drawCurrent: null,
   isPanning: false,
   panAnchor: null,
+
+  // Pinch-to-zoom
+  pinchStartDist: null,
+  pinchStartZoom: null,
+
+  // Angle drawing
+  angleStep: null,
+  angleVertex: null,
+  angleArmA: null,
 
   setImage: (img, fileName) => set({ image: img, imageFileName: fileName ?? null }),
 
@@ -117,4 +145,59 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
   },
 
   stopPanning: () => set({ isPanning: false, panAnchor: null }),
+
+  // Pinch-to-zoom
+  startPinchZoom: (dist) => {
+    const { transform } = get();
+    set({ pinchStartDist: dist, pinchStartZoom: transform.zoom });
+  },
+
+  updatePinchZoom: (dist, centerX, centerY) => {
+    const { pinchStartDist, pinchStartZoom, transform } = get();
+    if (pinchStartDist === null || pinchStartZoom === null) return;
+    const ratio = dist / pinchStartDist;
+    const newZoom = Math.max(0.05, Math.min(pinchStartZoom * ratio, 50));
+    set({
+      transform: {
+        panX: centerX - (centerX - transform.panX) * (newZoom / transform.zoom),
+        panY: centerY - (centerY - transform.panY) * (newZoom / transform.zoom),
+        zoom: newZoom,
+      },
+    });
+  },
+
+  stopPinchZoom: () => set({ pinchStartDist: null, pinchStartZoom: null }),
+
+  // Angle drawing
+  startAngle: () => set({ angleStep: 'vertex', angleVertex: null, angleArmA: null }),
+
+  placeAnglePoint: (pt) => {
+    const { angleStep, angleVertex, angleArmA } = get();
+    if (angleStep === 'vertex') {
+      set({ angleVertex: pt, angleStep: 'armA' });
+      return null;
+    }
+    if (angleStep === 'armA') {
+      set({ angleArmA: pt, angleStep: 'armB' });
+      return null;
+    }
+    if (angleStep === 'armB' && angleVertex && angleArmA) {
+      const angleDeg = calcAngleDeg(angleVertex, angleArmA, pt);
+      const result: AngleMeasurement = {
+        id: crypto.randomUUID(),
+        type: 'angle',
+        vertex: angleVertex,
+        armA: angleArmA,
+        armB: pt,
+        angleDeg,
+        name: '',
+        createdAt: Date.now(),
+      };
+      set({ angleStep: null, angleVertex: null, angleArmA: null });
+      return result;
+    }
+    return null;
+  },
+
+  cancelAngle: () => set({ angleStep: null, angleVertex: null, angleArmA: null }),
 }));

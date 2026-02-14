@@ -10,6 +10,7 @@ const modeLabels: Record<string, string> = {
   none: 'Navigate',
   reference: 'Reference',
   measure: 'Measure',
+  angle: 'Angle',
 };
 
 export function StatusBar() {

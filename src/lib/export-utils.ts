@@ -1,32 +1,48 @@
-import { Measurement, Unit } from '@/types/measurement';
+import { Measurement, AnyMeasurement, Unit } from '@/types/measurement';
 import { calcRealValue } from './calculations';
-import { drawMeasurementLine, drawLabel } from './canvas-rendering';
+import { drawMeasurementLine, drawAngleMeasurement } from './canvas-rendering';
 import { calcRealDistance } from './calculations';
 
 export function generateCSV(
-  measurements: Measurement[],
+  measurements: AnyMeasurement[],
   refValue: number,
   refUnit: Unit,
   reference?: Measurement
 ): string {
-  let csv = `Name,Type,Pixel Length,Real Value (${refUnit})\n`;
+  let csv = `Name,Type,Pixel Length,Real Value (${refUnit}),Angle (deg)\n`;
   for (const m of measurements) {
-    const real =
-      m.type === 'reference'
-        ? refValue
-        : calcRealValue(m.pixelLength, reference, refValue);
-    csv += `"${m.name}",${m.type},${m.pixelLength.toFixed(2)},${real?.toFixed(2) ?? ''}\n`;
+    if (m.type === 'angle') {
+      csv += `"${m.name}",angle,,,"${m.angleDeg.toFixed(2)}"\n`;
+    } else {
+      const real =
+        m.type === 'reference'
+          ? refValue
+          : calcRealValue(m.pixelLength, reference, refValue);
+      csv += `"${m.name}",${m.type},${m.pixelLength.toFixed(2)},${real?.toFixed(2) ?? ''},\n`;
+    }
   }
   return csv;
 }
 
 export function generateJSON(
-  measurements: Measurement[],
+  measurements: AnyMeasurement[],
   refValue: number,
   refUnit: Unit,
   reference?: Measurement
 ): string {
   const data = measurements.map((m) => {
+    if (m.type === 'angle') {
+      return {
+        name: m.name,
+        type: 'angle' as const,
+        angleDeg: Math.round(m.angleDeg * 100) / 100,
+        coordinates: {
+          vertex: { x: Math.round(m.vertex.x), y: Math.round(m.vertex.y) },
+          armA: { x: Math.round(m.armA.x), y: Math.round(m.armA.y) },
+          armB: { x: Math.round(m.armB.x), y: Math.round(m.armB.y) },
+        },
+      };
+    }
     const realValue =
       m.type === 'reference'
         ? refValue
@@ -49,26 +65,30 @@ export function generateJSON(
 }
 
 export function generateClipboardText(
-  measurements: Measurement[],
+  measurements: AnyMeasurement[],
   refValue: number,
   refUnit: Unit,
   reference?: Measurement
 ): string {
   let text = 'Measurements:\n';
   for (const m of measurements) {
-    const val =
-      m.type === 'reference'
-        ? `${refValue} ${refUnit} (reference)`
-        : (calcRealDistance(m.pixelLength, reference, refValue, refUnit) ??
-          `${m.pixelLength.toFixed(1)} px`);
-    text += `  ${m.name}: ${val}\n`;
+    if (m.type === 'angle') {
+      text += `  ${m.name}: ${m.angleDeg.toFixed(1)}°\n`;
+    } else {
+      const val =
+        m.type === 'reference'
+          ? `${refValue} ${refUnit} (reference)`
+          : (calcRealDistance(m.pixelLength, reference, refValue, refUnit) ??
+            `${m.pixelLength.toFixed(1)} px`);
+      text += `  ${m.name}: ${val}\n`;
+    }
   }
   return text;
 }
 
 export async function renderAnnotatedImage(
   image: HTMLImageElement,
-  measurements: Measurement[],
+  measurements: AnyMeasurement[],
   refValue: number,
   refUnit: Unit,
   reference?: Measurement
@@ -81,15 +101,18 @@ export async function renderAnnotatedImage(
   ctx.drawImage(image, 0, 0);
 
   const transform = { panX: 0, panY: 0, zoom: 1 };
-  const ref = reference;
 
   for (const m of measurements) {
-    const label =
-      m.type === 'reference'
-        ? `${refValue} ${refUnit} (ref)`
-        : (calcRealDistance(m.pixelLength, ref, refValue, refUnit) ??
-          `${m.pixelLength.toFixed(1)} px`);
-    drawMeasurementLine(ctx, m, false, transform, label, m.name);
+    if (m.type === 'angle') {
+      drawAngleMeasurement(ctx, m, false, transform);
+    } else {
+      const label =
+        m.type === 'reference'
+          ? `${refValue} ${refUnit} (ref)`
+          : (calcRealDistance(m.pixelLength, reference, refValue, refUnit) ??
+            `${m.pixelLength.toFixed(1)} px`);
+      drawMeasurementLine(ctx, m, false, transform, label, m.name);
+    }
   }
 
   return new Promise((resolve) => {

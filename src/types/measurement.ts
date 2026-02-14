@@ -1,5 +1,5 @@
-export type MeasurementType = 'reference' | 'measure';
-export type DrawMode = 'none' | 'reference' | 'measure';
+export type MeasurementType = 'reference' | 'measure' | 'angle';
+export type DrawMode = 'none' | 'reference' | 'measure' | 'angle';
 export type Unit = 'mm' | 'cm' | 'm' | 'in' | 'px';
 
 export interface Point {
@@ -9,13 +9,26 @@ export interface Point {
 
 export interface Measurement {
   id: string;
-  type: MeasurementType;
+  type: 'reference' | 'measure';
   start: Point;
   end: Point;
   pixelLength: number;
   name: string;
   createdAt: number;
 }
+
+export interface AngleMeasurement {
+  id: string;
+  type: 'angle';
+  vertex: Point;
+  armA: Point;
+  armB: Point;
+  angleDeg: number;
+  name: string;
+  createdAt: number;
+}
+
+export type AnyMeasurement = Measurement | AngleMeasurement;
 
 export interface ViewTransform {
   panX: number;
@@ -35,4 +48,13 @@ export interface MeasurementExport {
   realValue: number | null;
   unit: Unit;
   coordinates: { x1: number; y1: number; x2: number; y2: number };
+}
+
+export interface SavedProject {
+  id: string;
+  name: string;
+  measurements: AnyMeasurement[];
+  referenceValue: number;
+  referenceUnit: Unit;
+  updatedAt: number;
 }

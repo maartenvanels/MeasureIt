@@ -12,6 +12,10 @@ export function ShortcutsFooter() {
           Measure
         </span>
         <span>
+          <kbd className="rounded bg-zinc-800 px-1 py-0.5 text-zinc-400">A</kbd>{' '}
+          Angle
+        </span>
+        <span>
           <kbd className="rounded bg-zinc-800 px-1 py-0.5 text-zinc-400">Scroll</kbd>{' '}
           Zoom
         </span>

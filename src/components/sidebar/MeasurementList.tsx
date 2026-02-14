@@ -19,6 +19,7 @@ export function MeasurementList() {
 
   const refs = measurements.filter((m) => m.type === 'reference');
   const normals = measurements.filter((m) => m.type === 'measure');
+  const angles = measurements.filter((m) => m.type === 'angle');
 
   return (
     <ScrollArea className="flex-1">
@@ -27,6 +28,9 @@ export function MeasurementList() {
           <MeasurementItem key={m.id} measurement={m} />
         ))}
         {normals.map((m) => (
+          <MeasurementItem key={m.id} measurement={m} />
+        ))}
+        {angles.map((m) => (
           <MeasurementItem key={m.id} measurement={m} />
         ))}
       </div>

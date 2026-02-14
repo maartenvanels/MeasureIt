@@ -7,7 +7,7 @@ import { useUIStore } from '@/stores/useUIStore';
 import { renderImage, renderOverlay } from '@/lib/canvas-rendering';
 import { calcRealDistance } from '@/lib/calculations';
 import { pixelDist } from '@/lib/geometry';
-import { Measurement } from '@/types/measurement';
+import { Measurement, AnyMeasurement } from '@/types/measurement';
 
 export function useCanvasRenderer(
   imageCanvasRef: RefObject<HTMLCanvasElement | null>,
@@ -61,7 +61,7 @@ export function useCanvasRenderer(
       const canvasW = rect.width;
       const canvasH = rect.height;
 
-      const { image, transform, isDrawing, drawStart, drawCurrent } =
+      const { image, transform, isDrawing, drawStart, drawCurrent, angleStep, angleVertex, angleArmA } =
         useCanvasStore.getState();
       const { measurements, referenceValue, referenceUnit } =
         useMeasurementStore.getState();
@@ -77,8 +77,11 @@ export function useCanvasRenderer(
       }
 
       // Get label for a measurement
-      const ref = measurements.find((m) => m.type === 'reference');
-      const getLabel = (m: Measurement) => {
+      const ref = measurements.find((m): m is Measurement => m.type === 'reference');
+      const getLabel = (m: AnyMeasurement) => {
+        if (m.type === 'angle') {
+          return `${m.angleDeg.toFixed(1)}°`;
+        }
         if (m.type === 'reference') {
           return `${referenceValue} ${referenceUnit} (ref)`;
         }
@@ -99,6 +102,16 @@ export function useCanvasRenderer(
         };
       }
 
+      // Angle draw state for in-progress angle
+      let angleDrawState: Parameters<typeof renderOverlay>[8];
+      if (angleStep) {
+        angleDrawState = {
+          vertex: angleVertex,
+          armA: angleArmA,
+          cursorPos: drawCurrent,
+        };
+      }
+
       // Render overlay
       renderOverlay(
         overlayCtx,
@@ -108,7 +121,8 @@ export function useCanvasRenderer(
         selectedMeasurementId,
         transform,
         getLabel,
-        drawState
+        drawState,
+        angleDrawState
       );
     };
 

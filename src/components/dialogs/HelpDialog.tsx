@@ -60,9 +60,10 @@ export function HelpDialog() {
           </li>
         </ol>
         <div className="mt-4 rounded-lg bg-zinc-900 p-3 text-xs text-zinc-500">
-          <strong className="text-zinc-400">Pro tips:</strong> Hold Shift for
+          <strong className="text-zinc-400">Pro tips:</strong> Press A to measure
+          angles (click vertex, then two arm endpoints). Hold Shift for
           perfectly horizontal/vertical lines. Scroll to zoom. Middle-click to
-          pan. Double-click a name to rename it.
+          pan. Pinch to zoom on touch devices. Double-click a name to rename it.
         </div>
         <Button onClick={() => setOpen(false)} className="mt-2 w-full">
           Got it!
