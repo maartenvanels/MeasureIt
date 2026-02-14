@@ -5,18 +5,31 @@ import { useCanvasStore } from '@/stores/useCanvasStore';
 import { useUIStore } from '@/stores/useUIStore';
 import { useMeasurementStore } from '@/stores/useMeasurementStore';
 import { screenToImage, findSnapPoint, snapToAxis, imageToScreen } from '@/lib/geometry';
+import { LabelBounds } from '@/types/measurement';
 
 function pointerDist(a: { x: number; y: number }, b: { x: number; y: number }): number {
   return Math.sqrt((b.x - a.x) ** 2 + (b.y - a.y) ** 2);
 }
 
-export function useCanvasInteraction(overlayRef: RefObject<HTMLCanvasElement | null>) {
+export function useCanvasInteraction(
+  overlayRef: RefObject<HTMLCanvasElement | null>,
+  labelBoundsRef?: RefObject<LabelBounds[]>
+) {
   const canvasStore = useCanvasStore;
   const uiStore = useUIStore;
   const measurementStore = useMeasurementStore;
 
   // Track active pointers for multi-touch
   const activePointers = useRef<Map<number, { x: number; y: number }>>(new Map());
+
+  // Label drag state
+  const labelDrag = useRef<{
+    measurementId: string;
+    labelType: 'value' | 'name';
+    startX: number;
+    startY: number;
+    origOffset: { x: number; y: number };
+  } | null>(null);
 
   /** Get image point with snap-to-point applied */
   const getSnappedPoint = (mx: number, my: number) => {
@@ -54,6 +67,40 @@ export function useCanvasInteraction(overlayRef: RefObject<HTMLCanvasElement | n
         canvas.setPointerCapture(e.pointerId);
         e.preventDefault();
         return;
+      }
+
+      // Crop mode: draw crop rectangle
+      const { cropMode } = uiStore.getState();
+      if (cropMode && e.button === 0) {
+        const imgPt = screenToImage(mx, my, canvasStore.getState().transform);
+        canvasStore.getState().startCropDraw(imgPt);
+        canvas.setPointerCapture(e.pointerId);
+        e.preventDefault();
+        return;
+      }
+
+      // Label drag: check if clicking on a label (only in navigate mode)
+      if (e.button === 0 && mode === 'none' && labelBoundsRef?.current) {
+        for (let i = labelBoundsRef.current.length - 1; i >= 0; i--) {
+          const lb = labelBoundsRef.current[i];
+          if (mx >= lb.x && mx <= lb.x + lb.w && my >= lb.y && my <= lb.y + lb.h) {
+            const m = measurementStore.getState().measurements.find((m) => m.id === lb.measurementId);
+            if (m && m.type !== 'annotation') {
+              const offsetField = lb.labelType === 'value' ? 'labelOffset' : 'nameLabelOffset';
+              const currentOffset = (m as unknown as Record<string, unknown>)[offsetField] as { x: number; y: number } | undefined;
+              labelDrag.current = {
+                measurementId: lb.measurementId,
+                labelType: lb.labelType,
+                startX: mx,
+                startY: my,
+                origOffset: currentOffset ? { ...currentOffset } : { x: 0, y: 0 },
+              };
+              canvas.setPointerCapture(e.pointerId);
+              e.preventDefault();
+              return;
+            }
+          }
+        }
       }
 
       // Middle mouse button or left click in 'none' mode → pan
@@ -125,7 +172,7 @@ export function useCanvasInteraction(overlayRef: RefObject<HTMLCanvasElement | n
         canvas.setPointerCapture(e.pointerId);
       }
     },
-    [overlayRef, canvasStore, uiStore, measurementStore]
+    [overlayRef, canvasStore, uiStore, measurementStore, labelBoundsRef]
   );
 
   const handlePointerMove = useCallback(
@@ -153,9 +200,40 @@ export function useCanvasInteraction(overlayRef: RefObject<HTMLCanvasElement | n
         return;
       }
 
+      // Label drag in progress
+      if (labelDrag.current) {
+        const drag = labelDrag.current;
+        const transform = canvasStore.getState().transform;
+        const dx = (mx - drag.startX) / transform.zoom;
+        const dy = (my - drag.startY) / transform.zoom;
+        const newOffset = { x: drag.origOffset.x + dx, y: drag.origOffset.y + dy };
+        const field = drag.labelType === 'value' ? 'labelOffset' : 'nameLabelOffset';
+        measurementStore.getState().updateMeasurement(drag.measurementId, { [field]: newOffset });
+        return;
+      }
+
+      // Crop drawing in progress
+      if (state.isCropping) {
+        const imgPt = screenToImage(mx, my, state.transform);
+        state.updateCropDraw(imgPt);
+        return;
+      }
+
       if (state.isPanning) {
         state.updatePanning({ x: mx, y: my });
         return;
+      }
+
+      // Label hover cursor (in navigate mode)
+      if (mode === 'none' && labelBoundsRef?.current && !uiStore.getState().cropMode) {
+        let overLabel = false;
+        for (const lb of labelBoundsRef.current) {
+          if (mx >= lb.x && mx <= lb.x + lb.w && my >= lb.y && my <= lb.y + lb.h) {
+            overLabel = true;
+            break;
+          }
+        }
+        canvas.style.cursor = overLabel ? 'move' : '';
       }
 
       // Check snap for visual feedback when in a drawing mode
@@ -188,7 +266,7 @@ export function useCanvasInteraction(overlayRef: RefObject<HTMLCanvasElement | n
         canvasStore.setState({ drawCurrent: imgPt });
       }
     },
-    [overlayRef, canvasStore, uiStore, measurementStore]
+    [overlayRef, canvasStore, uiStore, measurementStore, labelBoundsRef]
   );
 
   const handlePointerUp = useCallback(
@@ -199,6 +277,21 @@ export function useCanvasInteraction(overlayRef: RefObject<HTMLCanvasElement | n
 
       // Remove tracked pointer
       activePointers.current.delete(e.pointerId);
+
+      // Release label drag
+      if (labelDrag.current) {
+        labelDrag.current = null;
+        return;
+      }
+
+      // Finish crop drawing
+      if (state.isCropping) {
+        const bounds = state.finishCropDraw();
+        if (bounds) {
+          uiStore.getState().setCropBounds(bounds);
+        }
+        return;
+      }
 
       // Stop pinch zoom when fingers lift
       if (state.pinchStartDist !== null) {

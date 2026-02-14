@@ -1,6 +1,6 @@
 'use client';
 
-import { Ruler, PenLine, TriangleRight, Hexagon, StickyNote } from 'lucide-react';
+import { Ruler, PenLine, TriangleRight, Hexagon, StickyNote, Crop } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Tooltip,
@@ -13,6 +13,8 @@ import { useCanvasStore } from '@/stores/useCanvasStore';
 export function ModeButtons() {
   const mode = useUIStore((s) => s.mode);
   const toggleMode = useUIStore((s) => s.toggleMode);
+  const cropMode = useUIStore((s) => s.cropMode);
+  const setCropMode = useUIStore((s) => s.setCropMode);
   const image = useCanvasStore((s) => s.image);
 
   return (
@@ -91,6 +93,22 @@ export function ModeButtons() {
           </Button>
         </TooltipTrigger>
         <TooltipContent>Place a text annotation (T)</TooltipContent>
+      </Tooltip>
+      <div className="mx-1 h-6 w-px bg-zinc-700" />
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button
+            variant={cropMode ? 'default' : 'outline'}
+            size="sm"
+            onClick={() => setCropMode(!cropMode)}
+            disabled={!image}
+            className={cropMode ? 'bg-orange-600 hover:bg-orange-700 text-white' : ''}
+          >
+            <Crop className="mr-1.5 h-4 w-4" />
+            Crop
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent>Crop the image (C)</TooltipContent>
       </Tooltip>
     </div>
   );

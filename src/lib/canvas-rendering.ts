@@ -1,4 +1,4 @@
-import { Measurement, AngleMeasurement, AreaMeasurement, AnyMeasurement, ViewTransform, DrawMode, Point } from '@/types/measurement';
+import { Measurement, AngleMeasurement, AreaMeasurement, AnyMeasurement, ViewTransform, DrawMode, Point, LabelBounds } from '@/types/measurement';
 import { imageToScreen } from './geometry';
 
 export const DEFAULT_COLORS: Record<string, string> = {
@@ -45,8 +45,12 @@ export function drawLabel(
   y: number,
   text: string,
   color: string,
-  fontSize = 13
-) {
+  fontSize = 13,
+  offset?: { x: number; y: number }
+): { x: number; y: number; w: number; h: number } {
+  const lx = x + (offset?.x ?? 0);
+  const ly = y + (offset?.y ?? 0);
+
   ctx.save();
   ctx.font = `600 ${fontSize}px 'Inter', 'Segoe UI', system-ui, sans-serif`;
   const metrics = ctx.measureText(text);
@@ -55,20 +59,22 @@ export function drawLabel(
 
   ctx.fillStyle = 'rgba(9, 9, 11, 0.9)';
   ctx.beginPath();
-  roundRect(ctx, x - w / 2, y - h / 2, w, h, 5);
+  roundRect(ctx, lx - w / 2, ly - h / 2, w, h, 5);
   ctx.fill();
 
   ctx.strokeStyle = color;
   ctx.lineWidth = 1;
   ctx.beginPath();
-  roundRect(ctx, x - w / 2, y - h / 2, w, h, 5);
+  roundRect(ctx, lx - w / 2, ly - h / 2, w, h, 5);
   ctx.stroke();
 
   ctx.fillStyle = color;
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
-  ctx.fillText(text, x, y);
+  ctx.fillText(text, lx, ly);
   ctx.restore();
+
+  return { x: lx - w / 2, y: ly - h / 2, w, h };
 }
 
 export function drawEndMarker(
@@ -123,12 +129,14 @@ export function drawMeasurementLine(
   selected: boolean,
   transform: ViewTransform,
   label: string,
-  nameLabel?: string
+  nameLabel?: string,
+  labelBoundsOut?: LabelBounds[]
 ) {
   const isRef = m.type === 'reference';
   const color = m.color ?? (isRef ? '#e11d48' : '#06b6d4');
   const s = imageToScreen(m.start.x, m.start.y, transform);
   const e = imageToScreen(m.end.x, m.end.y, transform);
+  const fontSize = m.fontSize ?? 13;
 
   ctx.save();
   ctx.globalAlpha = selected ? 1 : 0.85;
@@ -148,11 +156,23 @@ export function drawMeasurementLine(
 
   // Value label
   const mid = { x: (s.x + e.x) / 2, y: (s.y + e.y) / 2 };
-  drawLabel(ctx, mid.x, mid.y - 14, label, color);
+  const screenOffset = m.labelOffset
+    ? { x: m.labelOffset.x * transform.zoom, y: m.labelOffset.y * transform.zoom }
+    : undefined;
+  const vb = drawLabel(ctx, mid.x, mid.y - 14, label, color, fontSize, screenOffset);
+  if (labelBoundsOut) {
+    labelBoundsOut.push({ measurementId: m.id, labelType: 'value', ...vb });
+  }
 
   // Name label
   if (nameLabel) {
-    drawLabel(ctx, mid.x, mid.y + 18, nameLabel, '#71717a', 11);
+    const nameScreenOffset = m.nameLabelOffset
+      ? { x: m.nameLabelOffset.x * transform.zoom, y: m.nameLabelOffset.y * transform.zoom }
+      : undefined;
+    const nb = drawLabel(ctx, mid.x, mid.y + 18, nameLabel, '#71717a', Math.max(9, fontSize - 2), nameScreenOffset);
+    if (labelBoundsOut) {
+      labelBoundsOut.push({ measurementId: m.id, labelType: 'name', ...nb });
+    }
   }
 
   ctx.restore();
@@ -189,7 +209,8 @@ export function drawAngleMeasurement(
   ctx: CanvasRenderingContext2D,
   angle: AngleMeasurement,
   selected: boolean,
-  transform: ViewTransform
+  transform: ViewTransform,
+  labelBoundsOut?: LabelBounds[]
 ) {
   const color = angle.color ?? '#f59e0b';
   const v = imageToScreen(angle.vertex.x, angle.vertex.y, transform);
@@ -240,14 +261,27 @@ export function drawAngleMeasurement(
   if (diff > Math.PI) {
     labelAngleAdj = labelAngle + Math.PI;
   }
+  const fontSize = angle.fontSize ?? 13;
   const labelDist = arcRadius + 18;
   const lx = v.x + labelDist * Math.cos(labelAngleAdj);
   const ly = v.y + labelDist * Math.sin(labelAngleAdj);
-  drawLabel(ctx, lx, ly, `${angle.angleDeg.toFixed(1)}°`, color);
+  const screenOffset = angle.labelOffset
+    ? { x: angle.labelOffset.x * transform.zoom, y: angle.labelOffset.y * transform.zoom }
+    : undefined;
+  const vb = drawLabel(ctx, lx, ly, `${angle.angleDeg.toFixed(1)}°`, color, fontSize, screenOffset);
+  if (labelBoundsOut) {
+    labelBoundsOut.push({ measurementId: angle.id, labelType: 'value', ...vb });
+  }
 
   // Name label
   if (angle.name) {
-    drawLabel(ctx, lx, ly + 22, angle.name, '#71717a', 11);
+    const nameScreenOffset = angle.nameLabelOffset
+      ? { x: angle.nameLabelOffset.x * transform.zoom, y: angle.nameLabelOffset.y * transform.zoom }
+      : undefined;
+    const nb = drawLabel(ctx, lx, ly + 22, angle.name, '#71717a', Math.max(9, fontSize - 2), nameScreenOffset);
+    if (labelBoundsOut) {
+      labelBoundsOut.push({ measurementId: angle.id, labelType: 'name', ...nb });
+    }
   }
 
   ctx.restore();
@@ -315,7 +349,8 @@ export function drawAreaMeasurement(
   area: AreaMeasurement,
   selected: boolean,
   transform: ViewTransform,
-  label: string
+  label: string,
+  labelBoundsOut?: LabelBounds[]
 ) {
   const color = area.color ?? '#10b981';
   const screenPts = area.points.map((p) => imageToScreen(p.x, p.y, transform));
@@ -347,12 +382,25 @@ export function drawAreaMeasurement(
   }
 
   // Label at centroid
+  const fontSize = area.fontSize ?? 13;
   const cx = screenPts.reduce((s, p) => s + p.x, 0) / screenPts.length;
   const cy = screenPts.reduce((s, p) => s + p.y, 0) / screenPts.length;
-  drawLabel(ctx, cx, cy, label, color);
+  const screenOffset = area.labelOffset
+    ? { x: area.labelOffset.x * transform.zoom, y: area.labelOffset.y * transform.zoom }
+    : undefined;
+  const vb = drawLabel(ctx, cx, cy, label, color, fontSize, screenOffset);
+  if (labelBoundsOut) {
+    labelBoundsOut.push({ measurementId: area.id, labelType: 'value', ...vb });
+  }
 
   if (area.name) {
-    drawLabel(ctx, cx, cy + 22, area.name, '#71717a', 11);
+    const nameScreenOffset = area.nameLabelOffset
+      ? { x: area.nameLabelOffset.x * transform.zoom, y: area.nameLabelOffset.y * transform.zoom }
+      : undefined;
+    const nb = drawLabel(ctx, cx, cy + 22, area.name, '#71717a', Math.max(9, fontSize - 2), nameScreenOffset);
+    if (labelBoundsOut) {
+      labelBoundsOut.push({ measurementId: area.id, labelType: 'name', ...nb });
+    }
   }
 
   ctx.restore();
@@ -464,16 +512,18 @@ export function renderOverlay(
     points: Point[];
     cursorPos: Point | null;
   },
-  snapPoint?: Point | null
+  snapPoint?: Point | null,
+  labelBoundsOut?: LabelBounds[]
 ) {
   ctx.clearRect(0, 0, canvasWidth, canvasHeight);
+  if (labelBoundsOut) labelBoundsOut.length = 0;
 
   for (const m of measurements) {
     if (m.type === 'annotation') continue; // rendered as HTML overlay
     if (m.type === 'angle') {
-      drawAngleMeasurement(ctx, m, m.id === selectedId, transform);
+      drawAngleMeasurement(ctx, m, m.id === selectedId, transform, labelBoundsOut);
     } else if (m.type === 'area') {
-      drawAreaMeasurement(ctx, m, m.id === selectedId, transform, getLabel(m));
+      drawAreaMeasurement(ctx, m, m.id === selectedId, transform, getLabel(m), labelBoundsOut);
     } else {
       drawMeasurementLine(
         ctx,
@@ -481,7 +531,8 @@ export function renderOverlay(
         m.id === selectedId,
         transform,
         getLabel(m),
-        m.name
+        m.name,
+        labelBoundsOut
       );
     }
   }
@@ -514,5 +565,79 @@ export function renderOverlay(
   // Draw snap indicator last (on top of everything)
   if (snapPoint) {
     drawSnapIndicator(ctx, snapPoint, transform);
+  }
+}
+
+export function drawInProgressCrop(
+  ctx: CanvasRenderingContext2D,
+  canvasWidth: number,
+  canvasHeight: number,
+  start: Point,
+  current: Point,
+  transform: ViewTransform
+) {
+  const s = imageToScreen(start.x, start.y, transform);
+  const e = imageToScreen(current.x, current.y, transform);
+
+  const x = Math.min(s.x, e.x);
+  const y = Math.min(s.y, e.y);
+  const w = Math.abs(e.x - s.x);
+  const h = Math.abs(e.y - s.y);
+
+  // Dim outside
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+  ctx.fillRect(0, 0, canvasWidth, canvasHeight);
+  ctx.clearRect(x, y, w, h);
+
+  // Border
+  ctx.strokeStyle = '#ffffff';
+  ctx.lineWidth = 1.5;
+  ctx.setLineDash([6, 4]);
+  ctx.strokeRect(x, y, w, h);
+  ctx.setLineDash([]);
+
+  // Dimension label
+  const cropW = Math.abs(current.x - start.x).toFixed(0);
+  const cropH = Math.abs(current.y - start.y).toFixed(0);
+  drawLabel(ctx, x + w / 2, y + h + 20, `${cropW} × ${cropH} px`, '#ffffff');
+}
+
+export function drawCropOverlay(
+  ctx: CanvasRenderingContext2D,
+  canvasWidth: number,
+  canvasHeight: number,
+  cropBounds: { x: number; y: number; w: number; h: number },
+  transform: ViewTransform
+) {
+  const topLeft = imageToScreen(cropBounds.x, cropBounds.y, transform);
+  const bottomRight = imageToScreen(
+    cropBounds.x + cropBounds.w,
+    cropBounds.y + cropBounds.h,
+    transform
+  );
+  const rx = topLeft.x;
+  const ry = topLeft.y;
+  const rw = bottomRight.x - topLeft.x;
+  const rh = bottomRight.y - topLeft.y;
+
+  // Dim the entire canvas
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
+  ctx.fillRect(0, 0, canvasWidth, canvasHeight);
+
+  // Clear the crop region
+  ctx.clearRect(rx, ry, rw, rh);
+
+  // Selection border
+  ctx.strokeStyle = '#ffffff';
+  ctx.lineWidth = 2;
+  ctx.setLineDash([6, 4]);
+  ctx.strokeRect(rx, ry, rw, rh);
+  ctx.setLineDash([]);
+
+  // Corner handles
+  const hs = 8;
+  ctx.fillStyle = '#ffffff';
+  for (const [hx, hy] of [[rx, ry], [rx + rw, ry], [rx, ry + rh], [rx + rw, ry + rh]]) {
+    ctx.fillRect(hx - hs / 2, hy - hs / 2, hs, hs);
   }
 }

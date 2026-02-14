@@ -6,11 +6,12 @@ import { ShortcutsFooter } from './ShortcutsFooter';
 
 export function MeasurementsSidebar() {
   const sidebarOpen = useUIStore((s) => s.sidebarOpen);
+  const sidebarWidth = useUIStore((s) => s.sidebarWidth);
 
   if (!sidebarOpen) return null;
 
   return (
-    <aside className="flex w-72 flex-col border-l border-zinc-800 bg-zinc-900">
+    <aside className="flex flex-col border-l border-zinc-800 bg-zinc-900 flex-shrink-0" style={{ width: sidebarWidth }}>
       <div className="border-b border-zinc-800 px-4 py-3">
         <h2 className="text-xs font-medium uppercase tracking-wider text-zinc-500">
           Measurements

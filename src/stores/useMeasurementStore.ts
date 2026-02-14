@@ -25,6 +25,7 @@ interface MeasurementState {
   getAngleCount: () => number;
   getAreaCount: () => number;
   getAnnotationCount: () => number;
+  adjustAllCoordinates: (dx: number, dy: number) => void;
 }
 
 export const useMeasurementStore = create<MeasurementState>((set, get) => ({
@@ -142,4 +143,34 @@ export const useMeasurementStore = create<MeasurementState>((set, get) => ({
   getAngleCount: () => get().measurements.filter((m) => m.type === 'angle').length,
   getAreaCount: () => get().measurements.filter((m) => m.type === 'area').length,
   getAnnotationCount: () => get().measurements.filter((m) => m.type === 'annotation').length,
+
+  adjustAllCoordinates: (dx, dy) => {
+    const { measurements } = get();
+    const past = [...get().past, [...measurements]].slice(-50);
+    const adjusted = measurements.map((m) => {
+      if (m.type === 'annotation') {
+        return { ...m, position: { x: m.position.x + dx, y: m.position.y + dy } };
+      }
+      if (m.type === 'angle') {
+        return {
+          ...m,
+          vertex: { x: m.vertex.x + dx, y: m.vertex.y + dy },
+          armA: { x: m.armA.x + dx, y: m.armA.y + dy },
+          armB: { x: m.armB.x + dx, y: m.armB.y + dy },
+        };
+      }
+      if (m.type === 'area') {
+        return {
+          ...m,
+          points: m.points.map((p) => ({ x: p.x + dx, y: p.y + dy })),
+        };
+      }
+      return {
+        ...m,
+        start: { x: m.start.x + dx, y: m.start.y + dy },
+        end: { x: m.end.x + dx, y: m.end.y + dy },
+      };
+    }) as AnyMeasurement[];
+    set({ measurements: adjusted, past, future: [] });
+  },
 }));

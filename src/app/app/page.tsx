@@ -3,6 +3,7 @@
 import { Toolbar } from '@/components/toolbar/Toolbar';
 import { CanvasContainer } from '@/components/canvas/CanvasContainer';
 import { MeasurementsSidebar } from '@/components/sidebar/MeasurementsSidebar';
+import { SidebarResizeHandle } from '@/components/sidebar/SidebarResizeHandle';
 import { StatusBar } from '@/components/StatusBar';
 import { HelpDialog } from '@/components/dialogs/HelpDialog';
 import { SettingsDialog } from '@/components/dialogs/SettingsDialog';
@@ -17,6 +18,7 @@ export default function AppPage() {
       <Toolbar />
       <div className="flex flex-1 overflow-hidden">
         <CanvasContainer />
+        <SidebarResizeHandle />
         <MeasurementsSidebar />
       </div>
       <StatusBar />

@@ -4,15 +4,16 @@ import { useEffect, RefObject } from 'react';
 import { useCanvasStore } from '@/stores/useCanvasStore';
 import { useMeasurementStore } from '@/stores/useMeasurementStore';
 import { useUIStore } from '@/stores/useUIStore';
-import { renderImage, renderOverlay } from '@/lib/canvas-rendering';
+import { renderImage, renderOverlay, drawInProgressCrop, drawCropOverlay } from '@/lib/canvas-rendering';
 import { calcRealDistance, calcRealArea } from '@/lib/calculations';
 import { pixelDist } from '@/lib/geometry';
-import { Measurement, AreaMeasurement, AnyMeasurement } from '@/types/measurement';
+import { Measurement, AreaMeasurement, AnyMeasurement, LabelBounds } from '@/types/measurement';
 
 export function useCanvasRenderer(
   imageCanvasRef: RefObject<HTMLCanvasElement | null>,
   overlayCanvasRef: RefObject<HTMLCanvasElement | null>,
-  containerRef: RefObject<HTMLDivElement | null>
+  containerRef: RefObject<HTMLDivElement | null>,
+  labelBoundsRef?: RefObject<LabelBounds[]>
 ) {
   // Resize canvases
   useEffect(() => {
@@ -61,11 +62,11 @@ export function useCanvasRenderer(
       const canvasW = rect.width;
       const canvasH = rect.height;
 
-      const { image, transform, isDrawing, drawStart, drawCurrent, angleStep, angleVertex, angleArmA, areaPoints, snapPoint } =
+      const { image, transform, isDrawing, drawStart, drawCurrent, angleStep, angleVertex, angleArmA, areaPoints, snapPoint, isCropping, cropStart, cropCurrent } =
         useCanvasStore.getState();
       const { measurements, referenceValue, referenceUnit } =
         useMeasurementStore.getState();
-      const { selectedMeasurementId, mode } = useUIStore.getState();
+      const { selectedMeasurementId, mode, cropMode, cropBounds } = useUIStore.getState();
 
       // Render image
       if (image) {
@@ -139,8 +140,18 @@ export function useCanvasRenderer(
         drawState,
         angleDrawState,
         areaDrawState,
-        snapPoint
+        snapPoint,
+        labelBoundsRef?.current
       );
+
+      // Crop overlay (drawn on top of everything)
+      if (cropMode) {
+        if (cropBounds) {
+          drawCropOverlay(overlayCtx, canvasW, canvasH, cropBounds, transform);
+        } else if (isCropping && cropStart && cropCurrent) {
+          drawInProgressCrop(overlayCtx, canvasW, canvasH, cropStart, cropCurrent, transform);
+        }
+      }
     };
 
     // Subscribe to all stores for changes
@@ -156,5 +167,5 @@ export function useCanvasRenderer(
       unsubs.forEach((u) => u());
       if (rafId) cancelAnimationFrame(rafId);
     };
-  }, [imageCanvasRef, overlayCanvasRef, containerRef]);
+  }, [imageCanvasRef, overlayCanvasRef, containerRef, labelBoundsRef]);
 }

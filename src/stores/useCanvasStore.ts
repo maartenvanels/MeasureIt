@@ -58,6 +58,16 @@ interface CanvasState {
   addAreaPoint: (pt: Point) => void;
   finishArea: () => AreaMeasurement | null;
   cancelArea: () => void;
+
+  // Crop drawing state + actions
+  cropStart: Point | null;
+  cropCurrent: Point | null;
+  isCropping: boolean;
+  startCropDraw: (pt: Point) => void;
+  updateCropDraw: (pt: Point) => void;
+  finishCropDraw: () => { x: number; y: number; w: number; h: number } | null;
+  cancelCropDraw: () => void;
+  applyCrop: (bounds: { x: number; y: number; w: number; h: number }) => void;
 }
 
 export const useCanvasStore = create<CanvasState>((set, get) => ({
@@ -84,6 +94,11 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
 
   // Polygon drawing
   areaPoints: [],
+
+  // Crop drawing
+  cropStart: null,
+  cropCurrent: null,
+  isCropping: false,
 
   setImage: (img, fileName) => set({ image: img, imageFileName: fileName ?? null }),
   setSnapPoint: (p) => set({ snapPoint: p }),
@@ -259,4 +274,40 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
     return result;
   },
   cancelArea: () => set({ areaPoints: [] }),
+
+  // Crop drawing
+  startCropDraw: (pt) => set({ isCropping: true, cropStart: pt, cropCurrent: pt }),
+  updateCropDraw: (pt) => set({ cropCurrent: pt }),
+  finishCropDraw: () => {
+    const { cropStart, cropCurrent, image } = get();
+    set({ isCropping: false, cropStart: null, cropCurrent: null });
+    if (!cropStart || !cropCurrent || !image) return null;
+
+    const x = Math.max(0, Math.min(cropStart.x, cropCurrent.x));
+    const y = Math.max(0, Math.min(cropStart.y, cropCurrent.y));
+    const x2 = Math.min(image.width, Math.max(cropStart.x, cropCurrent.x));
+    const y2 = Math.min(image.height, Math.max(cropStart.y, cropCurrent.y));
+    const w = x2 - x;
+    const h = y2 - y;
+
+    if (w < 10 || h < 10) return null;
+    return { x, y, w, h };
+  },
+  cancelCropDraw: () => set({ isCropping: false, cropStart: null, cropCurrent: null }),
+  applyCrop: (bounds) => {
+    const { image } = get();
+    if (!image) return;
+
+    const tempCanvas = document.createElement('canvas');
+    tempCanvas.width = bounds.w;
+    tempCanvas.height = bounds.h;
+    const ctx = tempCanvas.getContext('2d')!;
+    ctx.drawImage(image, bounds.x, bounds.y, bounds.w, bounds.h, 0, 0, bounds.w, bounds.h);
+
+    const newImg = new window.Image();
+    newImg.onload = () => {
+      set({ image: newImg });
+    };
+    newImg.src = tempCanvas.toDataURL('image/png');
+  },
 }));

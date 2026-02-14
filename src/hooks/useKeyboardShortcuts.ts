@@ -15,7 +15,7 @@ export function useKeyboardShortcuts() {
       const { toggleMode, selectMeasurement, selectedMeasurementId } =
         useUIStore.getState();
       const { undo, redo, removeMeasurement } = useMeasurementStore.getState();
-      const { cancelDrawing, isDrawing, cancelAngle, angleStep, cancelArea, areaPoints } = useCanvasStore.getState();
+      const { cancelDrawing, isDrawing, cancelAngle, angleStep, cancelArea, areaPoints, cancelCropDraw } = useCanvasStore.getState();
 
       switch (e.key.toLowerCase()) {
         case 'r':
@@ -33,11 +33,19 @@ export function useKeyboardShortcuts() {
         case 't':
           if (!e.ctrlKey && !e.metaKey) toggleMode('annotation');
           break;
-        case 'escape':
-          if (useUIStore.getState().annotationEditorOpen) {
-            useUIStore.getState().closeAnnotationEditor();
+        case 'c':
+          if (!e.ctrlKey && !e.metaKey) {
+            const ui = useUIStore.getState();
+            ui.setCropMode(!ui.cropMode);
           }
-          if (isDrawing) {
+          break;
+        case 'escape':
+          if (useUIStore.getState().cropMode) {
+            cancelCropDraw();
+            useUIStore.getState().cancelCrop();
+          } else if (useUIStore.getState().annotationEditorOpen) {
+            useUIStore.getState().closeAnnotationEditor();
+          } else if (isDrawing) {
             cancelDrawing();
           } else if (angleStep) {
             cancelAngle();

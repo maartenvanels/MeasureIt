@@ -17,6 +17,9 @@ export interface Measurement {
   createdAt: number;
   color?: string;
   unitOverride?: Unit;
+  labelOffset?: Point;
+  nameLabelOffset?: Point;
+  fontSize?: number;
 }
 
 export interface AngleMeasurement {
@@ -29,6 +32,9 @@ export interface AngleMeasurement {
   name: string;
   createdAt: number;
   color?: string;
+  labelOffset?: Point;
+  nameLabelOffset?: Point;
+  fontSize?: number;
 }
 
 export interface AreaMeasurement {
@@ -40,6 +46,9 @@ export interface AreaMeasurement {
   createdAt: number;
   color?: string;
   unitOverride?: Unit;
+  labelOffset?: Point;
+  nameLabelOffset?: Point;
+  fontSize?: number;
 }
 
 export interface Annotation {
@@ -53,6 +62,15 @@ export interface Annotation {
 }
 
 export type AnyMeasurement = Measurement | AngleMeasurement | AreaMeasurement | Annotation;
+
+export interface LabelBounds {
+  measurementId: string;
+  labelType: 'value' | 'name';
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+}
 
 export interface ViewTransform {
   panX: number;

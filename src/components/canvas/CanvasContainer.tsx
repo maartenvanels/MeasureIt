@@ -9,23 +9,27 @@ import { useCanvasRenderer } from '@/hooks/useCanvasRenderer';
 import { DropZone } from './DropZone';
 import { ZoomControls } from './ZoomControls';
 import { AnnotationOverlay } from './AnnotationOverlay';
+import { CropConfirmOverlay } from './CropConfirmOverlay';
+import { LabelBounds } from '@/types/measurement';
 
 export function CanvasContainer() {
   const containerRef = useRef<HTMLDivElement>(null);
   const imageCanvasRef = useRef<HTMLCanvasElement>(null);
   const overlayCanvasRef = useRef<HTMLCanvasElement>(null);
+  const labelBoundsRef = useRef<LabelBounds[]>([]);
 
   const image = useCanvasStore((s) => s.image);
   const mode = useUIStore((s) => s.mode);
   const isPanning = useCanvasStore((s) => s.isPanning);
+  const cropMode = useUIStore((s) => s.cropMode);
 
   const { loadFromFile, loadFromDrop, loadFromClipboard } = useImageLoader();
 
   // Canvas interaction (pointer events)
-  useCanvasInteraction(overlayCanvasRef);
+  useCanvasInteraction(overlayCanvasRef, labelBoundsRef);
 
   // Canvas rendering (subscribes to stores)
-  useCanvasRenderer(imageCanvasRef, overlayCanvasRef, containerRef);
+  useCanvasRenderer(imageCanvasRef, overlayCanvasRef, containerRef, labelBoundsRef);
 
   // Clipboard paste
   useEffect(() => {
@@ -76,6 +80,7 @@ export function CanvasContainer() {
 
   const cursorClass =
     isPanning ? 'cursor-grabbing' :
+    cropMode ? 'cursor-crosshair' :
     mode === 'none' ? 'cursor-grab' :
     mode === 'annotation' ? 'cursor-text' : 'cursor-crosshair';
 
@@ -95,6 +100,7 @@ export function CanvasContainer() {
         className="absolute inset-0"
       />
       <AnnotationOverlay />
+      <CropConfirmOverlay containerRef={containerRef} />
       {!image && <DropZone />}
       <ZoomControls containerRef={containerRef} />
       <input type="file" id="fileInput" accept="image/*" className="hidden" />
