@@ -1,15 +1,34 @@
 import { Measurement, Unit } from '@/types/measurement';
 
+const UNIT_TO_MM: Record<Unit, number> = {
+  mm: 1,
+  cm: 10,
+  m: 1000,
+  in: 25.4,
+  px: 1,
+};
+
+export function convertUnit(value: number, from: Unit, to: Unit): number {
+  if (from === to) return value;
+  if (from === 'px' || to === 'px') return value;
+  return value * (UNIT_TO_MM[from] / UNIT_TO_MM[to]);
+}
+
 export function calcRealDistance(
   pixelLength: number,
   reference: Measurement | undefined,
   refValue: number,
-  refUnit: Unit
+  refUnit: Unit,
+  displayUnit?: Unit
 ): string | null {
   if (!reference || !refValue || refValue <= 0) return null;
   const ratio = refValue / reference.pixelLength;
-  const realDist = pixelLength * ratio;
-  return `${realDist.toFixed(2)} ${refUnit}`;
+  let realDist = pixelLength * ratio;
+  const unit = displayUnit ?? refUnit;
+  if (displayUnit && displayUnit !== refUnit) {
+    realDist = convertUnit(realDist, refUnit, displayUnit);
+  }
+  return `${realDist.toFixed(2)} ${unit}`;
 }
 
 export function calcRealValue(
@@ -26,10 +45,16 @@ export function calcRealArea(
   pixelArea: number,
   reference: Measurement | undefined,
   refValue: number,
-  refUnit: Unit
+  refUnit: Unit,
+  displayUnit?: Unit
 ): string | null {
   if (!reference) return null;
   const scale = refValue / reference.pixelLength;
-  const realArea = pixelArea * scale * scale;
-  return `${realArea.toFixed(2)} ${refUnit}\u00B2`;
+  let realArea = pixelArea * scale * scale;
+  const unit = displayUnit ?? refUnit;
+  if (displayUnit && displayUnit !== refUnit) {
+    const linearFactor = UNIT_TO_MM[refUnit] / UNIT_TO_MM[displayUnit];
+    realArea = realArea * linearFactor * linearFactor;
+  }
+  return `${realArea.toFixed(2)} ${unit}\u00B2`;
 }

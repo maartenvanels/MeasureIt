@@ -7,7 +7,7 @@ import { useUIStore } from '@/stores/useUIStore';
 import { renderImage, renderOverlay } from '@/lib/canvas-rendering';
 import { calcRealDistance, calcRealArea } from '@/lib/calculations';
 import { pixelDist } from '@/lib/geometry';
-import { Measurement, AnyMeasurement } from '@/types/measurement';
+import { Measurement, AreaMeasurement, AnyMeasurement } from '@/types/measurement';
 
 export function useCanvasRenderer(
   imageCanvasRef: RefObject<HTMLCanvasElement | null>,
@@ -79,16 +79,19 @@ export function useCanvasRenderer(
       // Get label for a measurement
       const ref = measurements.find((m): m is Measurement => m.type === 'reference');
       const getLabel = (m: AnyMeasurement) => {
+        if (m.type === 'annotation') {
+          return '';
+        }
         if (m.type === 'angle') {
           return `${m.angleDeg.toFixed(1)}\u00B0`;
         }
         if (m.type === 'area') {
-          return calcRealArea(m.pixelArea, ref, referenceValue, referenceUnit) ?? `${m.pixelArea.toFixed(0)} px\u00B2`;
+          return calcRealArea(m.pixelArea, ref, referenceValue, referenceUnit, (m as AreaMeasurement).unitOverride) ?? `${m.pixelArea.toFixed(0)} px\u00B2`;
         }
         if (m.type === 'reference') {
           return `${referenceValue} ${referenceUnit} (ref)`;
         }
-        return calcRealDistance(m.pixelLength, ref, referenceValue, referenceUnit) ??
+        return calcRealDistance(m.pixelLength, ref, referenceValue, referenceUnit, (m as Measurement).unitOverride) ??
           `${m.pixelLength.toFixed(1)} px`;
       };
 

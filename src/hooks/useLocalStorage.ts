@@ -70,6 +70,8 @@ export function useLocalStorage() {
           store.addArea(m);
         } else if (m.type === 'angle') {
           store.addAngle(m);
+        } else if (m.type === 'annotation') {
+          store.addAnnotation(m);
         } else {
           store.addMeasurement(m);
         }

@@ -1,5 +1,5 @@
-export type MeasurementType = 'reference' | 'measure' | 'angle' | 'area';
-export type DrawMode = 'none' | 'reference' | 'measure' | 'angle' | 'area';
+export type MeasurementType = 'reference' | 'measure' | 'angle' | 'area' | 'annotation';
+export type DrawMode = 'none' | 'reference' | 'measure' | 'angle' | 'area' | 'annotation';
 export type Unit = 'mm' | 'cm' | 'm' | 'in' | 'px';
 
 export interface Point {
@@ -15,6 +15,8 @@ export interface Measurement {
   pixelLength: number;
   name: string;
   createdAt: number;
+  color?: string;
+  unitOverride?: Unit;
 }
 
 export interface AngleMeasurement {
@@ -26,6 +28,7 @@ export interface AngleMeasurement {
   angleDeg: number;
   name: string;
   createdAt: number;
+  color?: string;
 }
 
 export interface AreaMeasurement {
@@ -35,9 +38,21 @@ export interface AreaMeasurement {
   pixelArea: number;
   name: string;
   createdAt: number;
+  color?: string;
+  unitOverride?: Unit;
 }
 
-export type AnyMeasurement = Measurement | AngleMeasurement | AreaMeasurement;
+export interface Annotation {
+  id: string;
+  type: 'annotation';
+  position: Point;
+  content: string;
+  name?: string;
+  color?: string;
+  createdAt: number;
+}
+
+export type AnyMeasurement = Measurement | AngleMeasurement | AreaMeasurement | Annotation;
 
 export interface ViewTransform {
   panX: number;

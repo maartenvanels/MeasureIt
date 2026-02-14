@@ -6,6 +6,7 @@ import { MeasurementsSidebar } from '@/components/sidebar/MeasurementsSidebar';
 import { StatusBar } from '@/components/StatusBar';
 import { HelpDialog } from '@/components/dialogs/HelpDialog';
 import { SettingsDialog } from '@/components/dialogs/SettingsDialog';
+import { AnnotationEditorDialog } from '@/components/dialogs/AnnotationEditorDialog';
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
 
 export default function AppPage() {
@@ -21,6 +22,7 @@ export default function AppPage() {
       <StatusBar />
       <HelpDialog />
       <SettingsDialog />
+      <AnnotationEditorDialog />
     </div>
   );
 }

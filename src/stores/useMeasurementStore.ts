@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { Measurement, AngleMeasurement, AreaMeasurement, AnyMeasurement, Unit } from '@/types/measurement';
+import { Measurement, AngleMeasurement, AreaMeasurement, Annotation, AnyMeasurement, Unit } from '@/types/measurement';
 
 interface MeasurementState {
   measurements: AnyMeasurement[];
@@ -11,6 +11,8 @@ interface MeasurementState {
   addMeasurement: (m: Measurement) => void;
   addAngle: (a: AngleMeasurement) => void;
   addArea: (a: AreaMeasurement) => void;
+  addAnnotation: (a: Annotation) => void;
+  updateMeasurement: (id: string, patch: Record<string, unknown>) => void;
   removeMeasurement: (id: string) => void;
   renameMeasurement: (id: string, name: string) => void;
   setReferenceValue: (value: number) => void;
@@ -22,6 +24,7 @@ interface MeasurementState {
   getMeasureCount: () => number;
   getAngleCount: () => number;
   getAreaCount: () => number;
+  getAnnotationCount: () => number;
 }
 
 export const useMeasurementStore = create<MeasurementState>((set, get) => ({
@@ -64,6 +67,24 @@ export const useMeasurementStore = create<MeasurementState>((set, get) => ({
     const { measurements } = get();
     const past = [...get().past, [...measurements]].slice(-50);
     set({ measurements: [...measurements, a], past, future: [] });
+  },
+
+  addAnnotation: (a) => {
+    const { measurements } = get();
+    const past = [...get().past, [...measurements]].slice(-50);
+    set({ measurements: [...measurements, a], past, future: [] });
+  },
+
+  updateMeasurement: (id, patch) => {
+    const { measurements } = get();
+    const past = [...get().past, [...measurements]].slice(-50);
+    set({
+      measurements: measurements.map((m) =>
+        m.id === id ? { ...m, ...patch } as AnyMeasurement : m
+      ),
+      past,
+      future: [],
+    });
   },
 
   removeMeasurement: (id) => {
@@ -120,4 +141,5 @@ export const useMeasurementStore = create<MeasurementState>((set, get) => ({
   getMeasureCount: () => get().measurements.filter((m) => m.type === 'measure').length,
   getAngleCount: () => get().measurements.filter((m) => m.type === 'angle').length,
   getAreaCount: () => get().measurements.filter((m) => m.type === 'area').length,
+  getAnnotationCount: () => get().measurements.filter((m) => m.type === 'annotation').length,
 }));

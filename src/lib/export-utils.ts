@@ -1,6 +1,6 @@
-import { Measurement, AreaMeasurement, AnyMeasurement, Unit } from '@/types/measurement';
+import { Measurement, AreaMeasurement, Annotation, AnyMeasurement, Unit } from '@/types/measurement';
 import { calcRealValue } from './calculations';
-import { drawMeasurementLine, drawAngleMeasurement, drawAreaMeasurement } from './canvas-rendering';
+import { drawMeasurementLine, drawAngleMeasurement, drawAreaMeasurement, drawLabel } from './canvas-rendering';
 import { calcRealDistance, calcRealArea } from './calculations';
 
 export function generateCSV(
@@ -9,19 +9,26 @@ export function generateCSV(
   refUnit: Unit,
   reference?: Measurement
 ): string {
-  let csv = `Name,Type,Pixel Length,Real Value (${refUnit}),Angle (deg),Pixel Area,Real Area (${refUnit}\u00B2)\n`;
+  let csv = `Name,Type,Value,Unit,Pixel Length,Angle (deg),Pixel Area\n`;
   for (const m of measurements) {
-    if (m.type === 'area') {
-      const realArea = calcRealArea(m.pixelArea, reference, refValue, refUnit);
-      csv += `"${m.name}",area,,,,${m.pixelArea.toFixed(2)},"${realArea ?? ''}"\n`;
+    if (m.type === 'annotation') {
+      const content = (m as Annotation).content.replace(/"/g, '""').slice(0, 100);
+      csv += `"${content}",annotation,,,,, \n`;
+    } else if (m.type === 'area') {
+      const area = m as AreaMeasurement;
+      const unit = area.unitOverride ?? refUnit;
+      const realArea = calcRealArea(area.pixelArea, reference, refValue, refUnit, area.unitOverride);
+      csv += `"${m.name}",area,"${realArea ?? ''}",${unit},,,"${area.pixelArea.toFixed(2)}"\n`;
     } else if (m.type === 'angle') {
-      csv += `"${m.name}",angle,,,"${m.angleDeg.toFixed(2)}",,\n`;
+      csv += `"${m.name}",angle,"${m.angleDeg.toFixed(2)}°",deg,,,\n`;
     } else {
+      const meas = m as Measurement;
+      const unit = meas.unitOverride ?? refUnit;
       const real =
         m.type === 'reference'
-          ? refValue
-          : calcRealValue(m.pixelLength, reference, refValue);
-      csv += `"${m.name}",${m.type},${m.pixelLength.toFixed(2)},${real?.toFixed(2) ?? ''},,, \n`;
+          ? `${refValue}`
+          : (calcRealDistance(meas.pixelLength, reference, refValue, refUnit, meas.unitOverride)?.replace(` ${unit}`, '') ?? '');
+      csv += `"${m.name}",${m.type},"${real}",${unit},${meas.pixelLength.toFixed(2)},,\n`;
     }
   }
   return csv;
@@ -34,15 +41,25 @@ export function generateJSON(
   reference?: Measurement
 ): string {
   const data = measurements.map((m) => {
+    if (m.type === 'annotation') {
+      const ann = m as Annotation;
+      return {
+        type: 'annotation' as const,
+        content: ann.content,
+        position: { x: Math.round(ann.position.x), y: Math.round(ann.position.y) },
+        color: ann.color,
+      };
+    }
     if (m.type === 'area') {
-      const realArea = calcRealArea(m.pixelArea, reference, refValue, refUnit);
+      const area = m as AreaMeasurement;
+      const realArea = calcRealArea(area.pixelArea, reference, refValue, refUnit, area.unitOverride);
       return {
         name: m.name,
         type: 'area' as const,
-        pixelArea: Math.round(m.pixelArea * 100) / 100,
+        pixelArea: Math.round(area.pixelArea * 100) / 100,
         realArea: realArea ?? null,
-        unit: refUnit,
-        points: m.points.map((p) => ({ x: Math.round(p.x), y: Math.round(p.y) })),
+        unit: area.unitOverride ?? refUnit,
+        points: area.points.map((p) => ({ x: Math.round(p.x), y: Math.round(p.y) })),
       };
     }
     if (m.type === 'angle') {
@@ -57,21 +74,22 @@ export function generateJSON(
         },
       };
     }
+    const meas = m as Measurement;
     const realValue =
       m.type === 'reference'
         ? refValue
-        : calcRealValue(m.pixelLength, reference, refValue);
+        : calcRealValue(meas.pixelLength, reference, refValue);
     return {
       name: m.name,
       type: m.type,
-      pixelLength: Math.round(m.pixelLength * 100) / 100,
+      pixelLength: Math.round(meas.pixelLength * 100) / 100,
       realValue: realValue ? Math.round(realValue * 100) / 100 : null,
-      unit: refUnit,
+      unit: meas.unitOverride ?? refUnit,
       coordinates: {
-        x1: Math.round(m.start.x),
-        y1: Math.round(m.start.y),
-        x2: Math.round(m.end.x),
-        y2: Math.round(m.end.y),
+        x1: Math.round(meas.start.x),
+        y1: Math.round(meas.start.y),
+        x2: Math.round(meas.end.x),
+        y2: Math.round(meas.end.y),
       },
     };
   });
@@ -86,17 +104,22 @@ export function generateClipboardText(
 ): string {
   let text = 'Measurements:\n';
   for (const m of measurements) {
-    if (m.type === 'area') {
-      const val = calcRealArea(m.pixelArea, reference, refValue, refUnit) ?? `${m.pixelArea.toFixed(0)} px\u00B2`;
+    if (m.type === 'annotation') {
+      const content = (m as Annotation).content.slice(0, 60).replace(/\n/g, ' ');
+      text += `  [Note] ${content}\n`;
+    } else if (m.type === 'area') {
+      const area = m as AreaMeasurement;
+      const val = calcRealArea(area.pixelArea, reference, refValue, refUnit, area.unitOverride) ?? `${area.pixelArea.toFixed(0)} px\u00B2`;
       text += `  ${m.name}: ${val}\n`;
     } else if (m.type === 'angle') {
       text += `  ${m.name}: ${m.angleDeg.toFixed(1)}\u00B0\n`;
     } else {
+      const meas = m as Measurement;
       const val =
         m.type === 'reference'
           ? `${refValue} ${refUnit} (reference)`
-          : (calcRealDistance(m.pixelLength, reference, refValue, refUnit) ??
-            `${m.pixelLength.toFixed(1)} px`);
+          : (calcRealDistance(meas.pixelLength, reference, refValue, refUnit, meas.unitOverride) ??
+            `${meas.pixelLength.toFixed(1)} px`);
       text += `  ${m.name}: ${val}\n`;
     }
   }
@@ -120,18 +143,27 @@ export async function renderAnnotatedImage(
   const transform = { panX: 0, panY: 0, zoom: 1 };
 
   for (const m of measurements) {
-    if (m.type === 'area') {
-      const label = calcRealArea(m.pixelArea, reference, refValue, refUnit) ?? `${m.pixelArea.toFixed(0)} px\u00B2`;
-      drawAreaMeasurement(ctx, m, false, transform, label);
+    if (m.type === 'annotation') {
+      const ann = m as Annotation;
+      const color = ann.color ?? '#a855f7';
+      const plainText = ann.content.replace(/[#*_~`$\\]/g, '').trim().slice(0, 50);
+      if (plainText) {
+        drawLabel(ctx, ann.position.x, ann.position.y, plainText, color, 14);
+      }
+    } else if (m.type === 'area') {
+      const area = m as AreaMeasurement;
+      const label = calcRealArea(area.pixelArea, reference, refValue, refUnit, area.unitOverride) ?? `${area.pixelArea.toFixed(0)} px\u00B2`;
+      drawAreaMeasurement(ctx, area, false, transform, label);
     } else if (m.type === 'angle') {
       drawAngleMeasurement(ctx, m, false, transform);
     } else {
+      const meas = m as Measurement;
       const label =
         m.type === 'reference'
           ? `${refValue} ${refUnit} (ref)`
-          : (calcRealDistance(m.pixelLength, reference, refValue, refUnit) ??
-            `${m.pixelLength.toFixed(1)} px`);
-      drawMeasurementLine(ctx, m, false, transform, label, m.name);
+          : (calcRealDistance(meas.pixelLength, reference, refValue, refUnit, meas.unitOverride) ??
+            `${meas.pixelLength.toFixed(1)} px`);
+      drawMeasurementLine(ctx, meas, false, transform, label, m.name);
     }
   }
 

@@ -64,6 +64,14 @@ export function useCanvasInteraction(overlayRef: RefObject<HTMLCanvasElement | n
         return;
       }
 
+      // Left click in annotation mode
+      if (e.button === 0 && mode === 'annotation') {
+        const imgPt = getSnappedPoint(mx, my);
+        uiStore.getState().startAnnotationPlacement(imgPt);
+        canvas.setPointerCapture(e.pointerId);
+        return;
+      }
+
       // Left click in area mode
       if (e.button === 0 && mode === 'area') {
         const imgPt = getSnappedPoint(mx, my);

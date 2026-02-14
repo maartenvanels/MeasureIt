@@ -126,3 +126,44 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* Annotation markdown content styles */
+.annotation-content {
+  font-size: 13px;
+  line-height: 1.5;
+  color: #e4e4e7;
+}
+.annotation-content h1,
+.annotation-content h2,
+.annotation-content h3 {
+  color: #fafafa;
+  font-weight: 600;
+  margin: 4px 0;
+}
+.annotation-content h1 { font-size: 16px; }
+.annotation-content h2 { font-size: 14px; }
+.annotation-content h3 { font-size: 13px; }
+.annotation-content p { margin: 2px 0; }
+.annotation-content code {
+  background: rgba(63, 63, 70, 0.5);
+  padding: 1px 4px;
+  border-radius: 3px;
+  font-size: 12px;
+}
+.annotation-content pre {
+  background: rgba(24, 24, 27, 0.8);
+  padding: 8px;
+  border-radius: 4px;
+  overflow-x: auto;
+  margin: 4px 0;
+}
+.annotation-content .katex { color: #e4e4e7; }
+.annotation-content ul,
+.annotation-content ol {
+  padding-left: 16px;
+  margin: 2px 0;
+}
+.annotation-content a {
+  color: #60a5fa;
+  text-decoration: underline;
+}

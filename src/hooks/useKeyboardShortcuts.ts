@@ -30,7 +30,13 @@ export function useKeyboardShortcuts() {
         case 'p':
           if (!e.ctrlKey && !e.metaKey) toggleMode('area');
           break;
+        case 't':
+          if (!e.ctrlKey && !e.metaKey) toggleMode('annotation');
+          break;
         case 'escape':
+          if (useUIStore.getState().annotationEditorOpen) {
+            useUIStore.getState().closeAnnotationEditor();
+          }
           if (isDrawing) {
             cancelDrawing();
           } else if (angleStep) {

@@ -52,6 +52,8 @@ export function getAllEndpoints(measurements: AnyMeasurement[]): Point[] {
       points.push(...m.points);
     } else if (m.type === 'angle') {
       points.push(m.vertex, m.armA, m.armB);
+    } else if (m.type === 'annotation') {
+      points.push(m.position);
     } else {
       points.push(m.start, m.end);
     }

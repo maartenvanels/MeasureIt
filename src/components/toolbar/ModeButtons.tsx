@@ -1,6 +1,6 @@
 'use client';
 
-import { Ruler, PenLine, TriangleRight, Hexagon } from 'lucide-react';
+import { Ruler, PenLine, TriangleRight, Hexagon, StickyNote } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Tooltip,
@@ -76,6 +76,21 @@ export function ModeButtons() {
           </Button>
         </TooltipTrigger>
         <TooltipContent>Measure an area (P)</TooltipContent>
+      </Tooltip>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button
+            variant={mode === 'annotation' ? 'default' : 'outline'}
+            size="sm"
+            onClick={() => toggleMode('annotation')}
+            disabled={!image}
+            className={mode === 'annotation' ? 'bg-violet-600 hover:bg-violet-700 text-white' : ''}
+          >
+            <StickyNote className="mr-1.5 h-4 w-4" />
+            Annotate
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent>Place a text annotation (T)</TooltipContent>
       </Tooltip>
     </div>
   );

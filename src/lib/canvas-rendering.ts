@@ -1,6 +1,25 @@
 import { Measurement, AngleMeasurement, AreaMeasurement, AnyMeasurement, ViewTransform, DrawMode, Point } from '@/types/measurement';
 import { imageToScreen } from './geometry';
 
+export const DEFAULT_COLORS: Record<string, string> = {
+  reference: '#e11d48',
+  measure: '#06b6d4',
+  angle: '#f59e0b',
+  area: '#10b981',
+  annotation: '#a855f7',
+};
+
+export function getMeasurementColor(m: AnyMeasurement): string {
+  return m.color ?? DEFAULT_COLORS[m.type] ?? '#06b6d4';
+}
+
+function hexToRgba(hex: string, alpha: number): string {
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+}
+
 function roundRect(
   ctx: CanvasRenderingContext2D,
   x: number,
@@ -107,7 +126,7 @@ export function drawMeasurementLine(
   nameLabel?: string
 ) {
   const isRef = m.type === 'reference';
-  const color = isRef ? '#e11d48' : '#06b6d4';
+  const color = m.color ?? (isRef ? '#e11d48' : '#06b6d4');
   const s = imageToScreen(m.start.x, m.start.y, transform);
   const e = imageToScreen(m.end.x, m.end.y, transform);
 
@@ -172,7 +191,7 @@ export function drawAngleMeasurement(
   selected: boolean,
   transform: ViewTransform
 ) {
-  const color = '#f59e0b'; // orange
+  const color = angle.color ?? '#f59e0b';
   const v = imageToScreen(angle.vertex.x, angle.vertex.y, transform);
   const a = imageToScreen(angle.armA.x, angle.armA.y, transform);
   const b = imageToScreen(angle.armB.x, angle.armB.y, transform);
@@ -298,14 +317,14 @@ export function drawAreaMeasurement(
   transform: ViewTransform,
   label: string
 ) {
-  const color = '#10b981'; // emerald
+  const color = area.color ?? '#10b981';
   const screenPts = area.points.map((p) => imageToScreen(p.x, p.y, transform));
 
   ctx.save();
   ctx.globalAlpha = selected ? 1 : 0.85;
 
   // Fill polygon
-  ctx.fillStyle = selected ? 'rgba(16, 185, 129, 0.15)' : 'rgba(16, 185, 129, 0.08)';
+  ctx.fillStyle = hexToRgba(color, selected ? 0.15 : 0.08);
   ctx.beginPath();
   screenPts.forEach((p, i) => (i === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y)));
   ctx.closePath();
@@ -450,6 +469,7 @@ export function renderOverlay(
   ctx.clearRect(0, 0, canvasWidth, canvasHeight);
 
   for (const m of measurements) {
+    if (m.type === 'annotation') continue; // rendered as HTML overlay
     if (m.type === 'angle') {
       drawAngleMeasurement(ctx, m, m.id === selectedId, transform);
     } else if (m.type === 'area') {

@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { DrawMode } from '@/types/measurement';
+import { DrawMode, Point } from '@/types/measurement';
 
 interface UIState {
   mode: DrawMode;
@@ -8,6 +8,11 @@ interface UIState {
   helpDialogOpen: boolean;
   settingsDialogOpen: boolean;
 
+  // Annotation editor
+  annotationEditorOpen: boolean;
+  pendingAnnotationPosition: Point | null;
+  editingAnnotationId: string | null;
+
   setMode: (mode: DrawMode) => void;
   toggleMode: (mode: DrawMode) => void;
   selectMeasurement: (id: string | null) => void;
@@ -15,6 +20,11 @@ interface UIState {
   setSidebarOpen: (open: boolean) => void;
   setHelpDialogOpen: (open: boolean) => void;
   setSettingsDialogOpen: (open: boolean) => void;
+
+  // Annotation editor actions
+  startAnnotationPlacement: (position: Point) => void;
+  openAnnotationEditor: (id: string) => void;
+  closeAnnotationEditor: () => void;
 }
 
 export const useUIStore = create<UIState>((set, get) => ({
@@ -24,6 +34,10 @@ export const useUIStore = create<UIState>((set, get) => ({
   helpDialogOpen: false,
   settingsDialogOpen: false,
 
+  annotationEditorOpen: false,
+  pendingAnnotationPosition: null,
+  editingAnnotationId: null,
+
   setMode: (mode) => set({ mode }),
   toggleMode: (mode) => set({ mode: get().mode === mode ? 'none' : mode }),
   selectMeasurement: (id) =>
@@ -32,4 +46,11 @@ export const useUIStore = create<UIState>((set, get) => ({
   setSidebarOpen: (open) => set({ sidebarOpen: open }),
   setHelpDialogOpen: (open) => set({ helpDialogOpen: open }),
   setSettingsDialogOpen: (open) => set({ settingsDialogOpen: open }),
+
+  startAnnotationPlacement: (position) =>
+    set({ annotationEditorOpen: true, pendingAnnotationPosition: position, editingAnnotationId: null }),
+  openAnnotationEditor: (id) =>
+    set({ annotationEditorOpen: true, editingAnnotationId: id, pendingAnnotationPosition: null }),
+  closeAnnotationEditor: () =>
+    set({ annotationEditorOpen: false, pendingAnnotationPosition: null, editingAnnotationId: null }),
 }));

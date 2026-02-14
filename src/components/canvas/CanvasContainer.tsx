@@ -8,6 +8,7 @@ import { useCanvasInteraction } from '@/hooks/useCanvasInteraction';
 import { useCanvasRenderer } from '@/hooks/useCanvasRenderer';
 import { DropZone } from './DropZone';
 import { ZoomControls } from './ZoomControls';
+import { AnnotationOverlay } from './AnnotationOverlay';
 
 export function CanvasContainer() {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -75,7 +76,8 @@ export function CanvasContainer() {
 
   const cursorClass =
     isPanning ? 'cursor-grabbing' :
-    mode === 'none' ? 'cursor-grab' : 'cursor-crosshair';
+    mode === 'none' ? 'cursor-grab' :
+    mode === 'annotation' ? 'cursor-text' : 'cursor-crosshair';
 
   return (
     <div
@@ -92,6 +94,7 @@ export function CanvasContainer() {
         ref={overlayCanvasRef}
         className="absolute inset-0"
       />
+      <AnnotationOverlay />
       {!image && <DropZone />}
       <ZoomControls containerRef={containerRef} />
       <input type="file" id="fileInput" accept="image/*" className="hidden" />
