@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" rx="96" fill="#e11d48"/>
+  <text x="256" y="280" text-anchor="middle" dominant-baseline="central" font-family="system-ui, -apple-system, sans-serif" font-weight="800" font-size="320" fill="white">M</text>
+  <line x1="80" y1="400" x2="432" y2="400" stroke="white" stroke-width="24" stroke-linecap="round" opacity="0.6"/>
+  <line x1="80" y1="380" x2="80" y2="420" stroke="white" stroke-width="18" stroke-linecap="round" opacity="0.6"/>
+  <line x1="432" y1="380" x2="432" y2="420" stroke="white" stroke-width="18" stroke-linecap="round" opacity="0.6"/>
+</svg>
