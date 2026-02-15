@@ -544,6 +544,272 @@ export function drawInProgressArea(
   ctx.restore();
 }
 
+export function drawCircleAreaMeasurement(
+  ctx: CanvasRenderingContext2D,
+  area: AreaMeasurement,
+  selected: boolean,
+  transform: ViewTransform,
+  label: string,
+  labelBoundsOut?: LabelBounds[],
+  skipNameLabel?: boolean
+) {
+  if (!area.center || !area.radius) return;
+  const color = area.color ?? '#10b981';
+  const sc = imageToScreen(area.center.x, area.center.y, transform);
+  const screenRadius = area.radius * transform.zoom;
+  const fontSize = area.fontSize ?? 13;
+
+  ctx.save();
+  ctx.globalAlpha = selected ? 1 : 0.85;
+
+  // Fill circle
+  ctx.fillStyle = hexToRgba(color, selected ? 0.15 : 0.08);
+  ctx.beginPath();
+  ctx.arc(sc.x, sc.y, screenRadius, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Stroke circle
+  ctx.strokeStyle = color;
+  ctx.lineWidth = selected ? 3 : 2;
+  ctx.beginPath();
+  ctx.arc(sc.x, sc.y, screenRadius, 0, Math.PI * 2);
+  ctx.stroke();
+
+  // Center dot
+  ctx.beginPath();
+  ctx.arc(sc.x, sc.y, 4, 0, Math.PI * 2);
+  ctx.fillStyle = color;
+  ctx.fill();
+
+  // Defining points
+  for (const p of area.points) {
+    const sp = imageToScreen(p.x, p.y, transform);
+    ctx.beginPath();
+    ctx.arc(sp.x, sp.y, 4, 0, Math.PI * 2);
+    ctx.fillStyle = color;
+    ctx.fill();
+  }
+
+  // Label at center
+  const screenOffset = area.labelOffset
+    ? { x: area.labelOffset.x * transform.zoom, y: area.labelOffset.y * transform.zoom }
+    : undefined;
+  const vb = drawLabel(ctx, sc.x, sc.y, label, color, fontSize, screenOffset);
+  if (labelBoundsOut) {
+    labelBoundsOut.push({ measurementId: area.id, labelType: 'value', ...vb });
+  }
+
+  if (area.name && !skipNameLabel) {
+    const nameScreenOffset = area.nameLabelOffset
+      ? { x: area.nameLabelOffset.x * transform.zoom, y: area.nameLabelOffset.y * transform.zoom }
+      : undefined;
+    const nb = drawLabel(ctx, sc.x, sc.y + 22, area.name, '#71717a', Math.max(9, fontSize - 2), nameScreenOffset);
+    if (labelBoundsOut) {
+      labelBoundsOut.push({ measurementId: area.id, labelType: 'name', ...nb });
+    }
+  }
+
+  ctx.restore();
+}
+
+export function drawFreehandAreaMeasurement(
+  ctx: CanvasRenderingContext2D,
+  area: AreaMeasurement,
+  selected: boolean,
+  transform: ViewTransform,
+  label: string,
+  labelBoundsOut?: LabelBounds[],
+  skipNameLabel?: boolean
+) {
+  const color = area.color ?? '#10b981';
+  const screenPts = area.points.map((p) => imageToScreen(p.x, p.y, transform));
+  if (screenPts.length < 3) return;
+  const fontSize = area.fontSize ?? 13;
+
+  ctx.save();
+  ctx.globalAlpha = selected ? 1 : 0.85;
+
+  // Fill freehand path
+  ctx.fillStyle = hexToRgba(color, selected ? 0.15 : 0.08);
+  ctx.beginPath();
+  screenPts.forEach((p, i) => (i === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y)));
+  ctx.closePath();
+  ctx.fill();
+
+  // Stroke freehand path
+  ctx.strokeStyle = color;
+  ctx.lineWidth = selected ? 3 : 2;
+  ctx.beginPath();
+  screenPts.forEach((p, i) => (i === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y)));
+  ctx.closePath();
+  ctx.stroke();
+
+  // Label at centroid
+  const cx = screenPts.reduce((s, p) => s + p.x, 0) / screenPts.length;
+  const cy = screenPts.reduce((s, p) => s + p.y, 0) / screenPts.length;
+  const screenOffset = area.labelOffset
+    ? { x: area.labelOffset.x * transform.zoom, y: area.labelOffset.y * transform.zoom }
+    : undefined;
+  const vb = drawLabel(ctx, cx, cy, label, color, fontSize, screenOffset);
+  if (labelBoundsOut) {
+    labelBoundsOut.push({ measurementId: area.id, labelType: 'value', ...vb });
+  }
+
+  if (area.name && !skipNameLabel) {
+    const nameScreenOffset = area.nameLabelOffset
+      ? { x: area.nameLabelOffset.x * transform.zoom, y: area.nameLabelOffset.y * transform.zoom }
+      : undefined;
+    const nb = drawLabel(ctx, cx, cy + 22, area.name, '#71717a', Math.max(9, fontSize - 2), nameScreenOffset);
+    if (labelBoundsOut) {
+      labelBoundsOut.push({ measurementId: area.id, labelType: 'name', ...nb });
+    }
+  }
+
+  ctx.restore();
+}
+
+export function drawInProgressCircle3Pt(
+  ctx: CanvasRenderingContext2D,
+  placedPoints: Point[],
+  cursorPos: Point | null,
+  transform: ViewTransform
+) {
+  const color = '#10b981';
+  ctx.save();
+
+  // Draw placed points
+  for (const p of placedPoints) {
+    const sp = imageToScreen(p.x, p.y, transform);
+    ctx.beginPath();
+    ctx.arc(sp.x, sp.y, 5, 0, Math.PI * 2);
+    ctx.fillStyle = color;
+    ctx.fill();
+  }
+
+  // Preview circle if we have 2+ points
+  if (placedPoints.length >= 2 && cursorPos) {
+    const pts = [...placedPoints, cursorPos];
+    // Try to compute circumscribed circle for preview
+    const ax = pts[0].x, ay = pts[0].y;
+    const bx = pts[1].x, by = pts[1].y;
+    const cx = pts[2].x, cy = pts[2].y;
+    const D = 2 * (ax * (by - cy) + bx * (cy - ay) + cx * (ay - by));
+    if (Math.abs(D) > 1e-10) {
+      const ux = ((ax * ax + ay * ay) * (by - cy) + (bx * bx + by * by) * (cy - ay) + (cx * cx + cy * cy) * (ay - by)) / D;
+      const uy = ((ax * ax + ay * ay) * (cx - bx) + (bx * bx + by * by) * (ax - cx) + (cx * cx + cy * cy) * (bx - ax)) / D;
+      const center = imageToScreen(ux, uy, transform);
+      const edgePt = imageToScreen(pts[0].x, pts[0].y, transform);
+      const dx = edgePt.x - center.x;
+      const dy = edgePt.y - center.y;
+      const screenRadius = Math.sqrt(dx * dx + dy * dy);
+
+      ctx.setLineDash([6, 4]);
+      ctx.strokeStyle = color;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(center.x, center.y, screenRadius, 0, Math.PI * 2);
+      ctx.stroke();
+
+      // Fill preview
+      ctx.fillStyle = hexToRgba(color, 0.06);
+      ctx.beginPath();
+      ctx.arc(center.x, center.y, screenRadius, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  } else if (placedPoints.length === 1 && cursorPos) {
+    // Draw line from first point to cursor
+    const sp = imageToScreen(placedPoints[0].x, placedPoints[0].y, transform);
+    const cp = imageToScreen(cursorPos.x, cursorPos.y, transform);
+    ctx.setLineDash([6, 4]);
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(sp.x, sp.y);
+    ctx.lineTo(cp.x, cp.y);
+    ctx.stroke();
+  }
+
+  ctx.restore();
+}
+
+export function drawInProgressCircleCenter(
+  ctx: CanvasRenderingContext2D,
+  center: Point,
+  cursorPos: Point | null,
+  transform: ViewTransform
+) {
+  const color = '#10b981';
+  const sc = imageToScreen(center.x, center.y, transform);
+
+  ctx.save();
+
+  // Center dot
+  ctx.beginPath();
+  ctx.arc(sc.x, sc.y, 5, 0, Math.PI * 2);
+  ctx.fillStyle = color;
+  ctx.fill();
+
+  // Preview circle to cursor
+  if (cursorPos) {
+    const cp = imageToScreen(cursorPos.x, cursorPos.y, transform);
+    const dx = cp.x - sc.x;
+    const dy = cp.y - sc.y;
+    const screenRadius = Math.sqrt(dx * dx + dy * dy);
+
+    ctx.setLineDash([6, 4]);
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(sc.x, sc.y, screenRadius, 0, Math.PI * 2);
+    ctx.stroke();
+
+    // Fill preview
+    ctx.fillStyle = hexToRgba(color, 0.06);
+    ctx.beginPath();
+    ctx.arc(sc.x, sc.y, screenRadius, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Radius line
+    ctx.setLineDash([6, 4]);
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(sc.x, sc.y);
+    ctx.lineTo(cp.x, cp.y);
+    ctx.stroke();
+  }
+
+  ctx.restore();
+}
+
+export function drawInProgressFreehand(
+  ctx: CanvasRenderingContext2D,
+  points: Point[],
+  transform: ViewTransform
+) {
+  if (points.length < 2) return;
+  const color = '#10b981';
+  const screenPts = points.map((p) => imageToScreen(p.x, p.y, transform));
+
+  ctx.save();
+
+  // Fill preview (close path)
+  ctx.fillStyle = hexToRgba(color, 0.06);
+  ctx.beginPath();
+  screenPts.forEach((p, i) => (i === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y)));
+  ctx.closePath();
+  ctx.fill();
+
+  // Stroke the path
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  screenPts.forEach((p, i) => (i === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y)));
+  ctx.stroke();
+
+  ctx.restore();
+}
+
 export function drawSnapIndicator(
   ctx: CanvasRenderingContext2D,
   point: Point,
@@ -593,7 +859,18 @@ export function renderOverlay(
   },
   snapPoint?: Point | null,
   labelBoundsOut?: LabelBounds[],
-  gridConfig?: { enabled: boolean; spacing: number; imageWidth?: number; imageHeight?: number }
+  gridConfig?: { enabled: boolean; spacing: number; imageWidth?: number; imageHeight?: number },
+  circle3PtDrawState?: {
+    points: Point[];
+    cursorPos: Point | null;
+  },
+  circleCenterDrawState?: {
+    center: Point;
+    cursorPos: Point | null;
+  },
+  freehandDrawState?: {
+    points: Point[];
+  }
 ) {
   ctx.clearRect(0, 0, canvasWidth, canvasHeight);
   if (labelBoundsOut) labelBoundsOut.length = 0;
@@ -609,7 +886,13 @@ export function renderOverlay(
     if (m.type === 'angle') {
       drawAngleMeasurement(ctx, m, m.id === selectedId, transform, labelBoundsOut, true);
     } else if (m.type === 'area') {
-      drawAreaMeasurement(ctx, m, m.id === selectedId, transform, getLabel(m), labelBoundsOut, true);
+      if (m.areaKind === 'circle-3pt' || m.areaKind === 'circle-center') {
+        drawCircleAreaMeasurement(ctx, m, m.id === selectedId, transform, getLabel(m), labelBoundsOut, true);
+      } else if (m.areaKind === 'freehand') {
+        drawFreehandAreaMeasurement(ctx, m, m.id === selectedId, transform, getLabel(m), labelBoundsOut, true);
+      } else {
+        drawAreaMeasurement(ctx, m, m.id === selectedId, transform, getLabel(m), labelBoundsOut, true);
+      }
     } else if (m.type === 'reference' || m.type === 'measure') {
       drawMeasurementLine(
         ctx,
@@ -647,6 +930,18 @@ export function renderOverlay(
 
   if (areaDrawState && areaDrawState.points.length > 0) {
     drawInProgressArea(ctx, areaDrawState.points, areaDrawState.cursorPos, transform);
+  }
+
+  if (circle3PtDrawState && circle3PtDrawState.points.length > 0) {
+    drawInProgressCircle3Pt(ctx, circle3PtDrawState.points, circle3PtDrawState.cursorPos, transform);
+  }
+
+  if (circleCenterDrawState) {
+    drawInProgressCircleCenter(ctx, circleCenterDrawState.center, circleCenterDrawState.cursorPos, transform);
+  }
+
+  if (freehandDrawState && freehandDrawState.points.length > 0) {
+    drawInProgressFreehand(ctx, freehandDrawState.points, transform);
   }
 
   // Draw snap indicator last (on top of everything)

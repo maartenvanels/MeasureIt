@@ -1,6 +1,6 @@
 'use client';
 
-import { Ruler, PenLine, TriangleRight, Hexagon, StickyNote, Crop, Grid3x3, ChevronDown, Box } from 'lucide-react';
+import { Ruler, PenLine, TriangleRight, Hexagon, StickyNote, Crop, Grid3x3, ChevronDown, Box, Pencil, Circle, CircleDot } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Tooltip,
@@ -18,6 +18,15 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { useUIStore } from '@/stores/useUIStore';
 import { useCanvasStore } from '@/stores/useCanvasStore';
+import { ToolGroupButton, type ToolOption } from './ToolGroupButton';
+import { DrawMode } from '@/types/measurement';
+
+const AREA_TOOLS: ToolOption[] = [
+  { mode: 'area-polygon', label: 'Polygon', icon: Hexagon, shortcut: 'P' },
+  { mode: 'area-freehand', label: 'Freehand', icon: Pencil },
+  { mode: 'area-circle-3pt', label: 'Circle (3pt)', icon: Circle },
+  { mode: 'area-circle-center', label: 'Circle (center)', icon: CircleDot },
+];
 
 const GRID_PRESETS = [10, 25, 50, 100, 200, 500];
 
@@ -25,6 +34,8 @@ export function ModeButtons() {
   const mode = useUIStore((s) => s.mode);
   const viewMode = useUIStore((s) => s.viewMode);
   const toggleMode = useUIStore((s) => s.toggleMode);
+  const setMode = useUIStore((s) => s.setMode);
+  const lastAreaTool = useUIStore((s) => s.lastAreaTool);
   const cropMode = useUIStore((s) => s.cropMode);
   const setCropMode = useUIStore((s) => s.setCropMode);
   const image = useCanvasStore((s) => s.image);
@@ -122,21 +133,21 @@ export function ModeButtons() {
             </TooltipTrigger>
             <TooltipContent>Measure an angle (A)</TooltipContent>
           </Tooltip>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                variant={mode === 'area' ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => toggleMode('area')}
-                disabled={!image}
-                className={mode === 'area' ? 'bg-emerald-600 hover:bg-emerald-700 text-white' : ''}
-              >
-                <Hexagon className="mr-1.5 h-4 w-4" />
-                Area
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>Measure an area (P)</TooltipContent>
-          </Tooltip>
+          <ToolGroupButton
+            tools={AREA_TOOLS}
+            activeMode={mode}
+            lastUsedMode={lastAreaTool}
+            onSelect={(m: DrawMode) => {
+              if (m === 'none') {
+                setMode('none');
+              } else {
+                toggleMode(m);
+              }
+            }}
+            disabled={!image}
+            activeClassName="bg-emerald-600 hover:bg-emerald-700 text-white"
+            tooltip="Measure an area (P)"
+          />
           <Tooltip>
             <TooltipTrigger asChild>
               <Button

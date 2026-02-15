@@ -5,7 +5,7 @@ import { useCanvasStore } from '@/stores/useCanvasStore';
 import { useUIStore } from '@/stores/useUIStore';
 import { useMeasurementStore } from '@/stores/useMeasurementStore';
 import { screenToImage, findSnapPoint, snapToAxis, imageToScreen, snapToGrid, pixelDist } from '@/lib/geometry';
-import { Annotation, Measurement, LabelBounds } from '@/types/measurement';
+import { Annotation, Measurement, LabelBounds, isAreaMode } from '@/types/measurement';
 
 function pointerDist(a: { x: number; y: number }, b: { x: number; y: number }): number {
   return Math.sqrt((b.x - a.x) ** 2 + (b.y - a.y) ** 2);
@@ -215,8 +215,8 @@ export function useCanvasInteraction(
         return;
       }
 
-      // Left click in area mode
-      if (e.button === 0 && mode === 'area') {
+      // Left click in area polygon mode
+      if (e.button === 0 && (mode === 'area' || mode === 'area-polygon')) {
         const imgPt = getSnappedPoint(mx, my);
         const state = canvasStore.getState();
         const areaPoints = state.areaPoints;
@@ -239,6 +239,52 @@ export function useCanvasInteraction(
         }
 
         state.addAreaPoint(imgPt);
+        canvas.setPointerCapture(e.pointerId);
+        return;
+      }
+
+      // Left click in freehand mode — start capture
+      if (e.button === 0 && mode === 'area-freehand') {
+        const imgPt = getSnappedPoint(mx, my);
+        canvasStore.getState().startFreehand(imgPt);
+        canvas.setPointerCapture(e.pointerId);
+        return;
+      }
+
+      // Left click in circle-3-point mode — place point
+      if (e.button === 0 && mode === 'area-circle-3pt') {
+        const imgPt = getSnappedPoint(mx, my);
+        const state = canvasStore.getState();
+        state.addCircle3PtPoint(imgPt);
+        // After 3rd point, finish
+        if (state.circle3PtPoints.length >= 2) { // just added the 3rd
+          const result = canvasStore.getState().finishCircle3Pt();
+          if (result) {
+            const mStore = measurementStore.getState();
+            result.name = `Area ${mStore.getAreaCount() + 1}`;
+            mStore.addArea(result);
+          }
+        }
+        canvas.setPointerCapture(e.pointerId);
+        return;
+      }
+
+      // Left click in circle-center mode
+      if (e.button === 0 && mode === 'area-circle-center') {
+        const imgPt = getSnappedPoint(mx, my);
+        const state = canvasStore.getState();
+        if (!state.circleCenterPoint) {
+          // First click: place center
+          state.startCircleCenter(imgPt);
+        } else {
+          // Second click: finish with edge point
+          const result = state.finishCircleCenter(imgPt);
+          if (result) {
+            const mStore = measurementStore.getState();
+            result.name = `Area ${mStore.getAreaCount() + 1}`;
+            mStore.addArea(result);
+          }
+        }
         canvas.setPointerCapture(e.pointerId);
         return;
       }
@@ -464,7 +510,26 @@ export function useCanvasInteraction(
       }
 
       // Update cursor position for area in-progress preview
-      if (mode === 'area' && state.areaPoints.length > 0) {
+      if ((mode === 'area' || mode === 'area-polygon') && state.areaPoints.length > 0) {
+        const imgPt = getSnappedPoint(mx, my);
+        canvasStore.setState({ drawCurrent: imgPt });
+      }
+
+      // Freehand: add points while pointer is down
+      if (mode === 'area-freehand' && state.isFreehandDrawing) {
+        const imgPt = screenToImage(mx, my, state.transform);
+        canvasStore.getState().addFreehandPoint(imgPt);
+        return;
+      }
+
+      // Update cursor for circle-3pt preview
+      if (mode === 'area-circle-3pt' && state.circle3PtPoints.length > 0) {
+        const imgPt = getSnappedPoint(mx, my);
+        canvasStore.setState({ drawCurrent: imgPt });
+      }
+
+      // Update cursor for circle-center preview
+      if (mode === 'area-circle-center' && state.circleCenterPoint) {
         const imgPt = getSnappedPoint(mx, my);
         canvasStore.setState({ drawCurrent: imgPt });
       }
@@ -523,6 +588,17 @@ export function useCanvasInteraction(
         return;
       }
 
+      // Finish freehand drawing on pointer up
+      if (state.isFreehandDrawing) {
+        const result = canvasStore.getState().finishFreehand();
+        if (result) {
+          const mStore = measurementStore.getState();
+          result.name = `Area ${mStore.getAreaCount() + 1}`;
+          mStore.addArea(result);
+        }
+        return;
+      }
+
       if (state.isDrawing) {
         const result = state.finishDrawing();
         if (result) {
@@ -565,7 +641,7 @@ export function useCanvasInteraction(
   const handleDoubleClick = useCallback(
     (e: MouseEvent) => {
       const mode = uiStore.getState().mode;
-      if (mode !== 'area') return;
+      if (mode !== 'area' && mode !== 'area-polygon') return;
       const state = canvasStore.getState();
       if (state.areaPoints.length >= 3) {
         const result = state.finishArea();

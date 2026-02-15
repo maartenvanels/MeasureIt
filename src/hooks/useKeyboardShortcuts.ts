@@ -15,7 +15,7 @@ export function useKeyboardShortcuts() {
       const { toggleMode, selectMeasurement, selectedMeasurementId } =
         useUIStore.getState();
       const { undo, redo, removeMeasurement } = useMeasurementStore.getState();
-      const { cancelDrawing, isDrawing, cancelAngle, angleStep, cancelArea, areaPoints, cancelCropDraw } = useCanvasStore.getState();
+      const { cancelDrawing, isDrawing, cancelAngle, angleStep, cancelArea, areaPoints, cancelCropDraw, cancelFreehand, isFreehandDrawing, cancelCircle3Pt, circle3PtPoints, cancelCircleCenter, circleCenterPoint } = useCanvasStore.getState();
 
       switch (e.key.toLowerCase()) {
         case 'r':
@@ -28,7 +28,10 @@ export function useKeyboardShortcuts() {
           if (!e.ctrlKey && !e.metaKey) toggleMode('angle');
           break;
         case 'p':
-          if (!e.ctrlKey && !e.metaKey) toggleMode('area');
+          if (!e.ctrlKey && !e.metaKey) {
+            const lastAreaTool = useUIStore.getState().lastAreaTool;
+            toggleMode(lastAreaTool || 'area-polygon');
+          }
           break;
         case 't':
           if (!e.ctrlKey && !e.metaKey) toggleMode('annotation');
@@ -56,6 +59,12 @@ export function useKeyboardShortcuts() {
             cancelAngle();
           } else if (areaPoints.length > 0) {
             cancelArea();
+          } else if (isFreehandDrawing) {
+            cancelFreehand();
+          } else if (circle3PtPoints.length > 0) {
+            cancelCircle3Pt();
+          } else if (circleCenterPoint) {
+            cancelCircleCenter();
           } else {
             useUIStore.getState().setMode('none');
             selectMeasurement(null);

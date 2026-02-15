@@ -50,6 +50,7 @@ export function getAllEndpoints(measurements: AnyMeasurement[]): Point[] {
   for (const m of measurements) {
     if (m.type === 'area') {
       points.push(...m.points);
+      if (m.center) points.push(m.center);
     } else if (m.type === 'angle') {
       points.push(m.vertex, m.armA, m.armB);
     } else if (m.type === 'annotation') {
@@ -109,4 +110,59 @@ export function calcPolygonArea(points: Point[]): number {
     area -= points[j].x * points[i].y;
   }
   return Math.abs(area) / 2;
+}
+
+/** Circle area from radius */
+export function circleArea(radius: number): number {
+  return Math.PI * radius * radius;
+}
+
+/** Compute circumscribed circle from 3 points. Returns null if collinear. */
+export function circumscribedCircle(
+  p1: Point, p2: Point, p3: Point
+): { center: Point; radius: number } | null {
+  const ax = p1.x, ay = p1.y;
+  const bx = p2.x, by = p2.y;
+  const cx = p3.x, cy = p3.y;
+  const D = 2 * (ax * (by - cy) + bx * (cy - ay) + cx * (ay - by));
+  if (Math.abs(D) < 1e-10) return null; // collinear
+  const ux = ((ax * ax + ay * ay) * (by - cy) + (bx * bx + by * by) * (cy - ay) + (cx * cx + cy * cy) * (ay - by)) / D;
+  const uy = ((ax * ax + ay * ay) * (cx - bx) + (bx * bx + by * by) * (ax - cx) + (cx * cx + cy * cy) * (bx - ax)) / D;
+  const center = { x: ux, y: uy };
+  const radius = pixelDist(center, p1);
+  return { center, radius };
+}
+
+/** Hit test: is point inside circle? */
+export function pointInCircle(point: Point, center: Point, radius: number): boolean {
+  return pixelDist(point, center) <= radius;
+}
+
+/** Perpendicular distance from a point to a line segment */
+function perpendicularDistance(point: Point, lineStart: Point, lineEnd: Point): number {
+  const dx = lineEnd.x - lineStart.x;
+  const dy = lineEnd.y - lineStart.y;
+  const lenSq = dx * dx + dy * dy;
+  if (lenSq === 0) return pixelDist(point, lineStart);
+  const num = Math.abs(dy * point.x - dx * point.y + lineEnd.x * lineStart.y - lineEnd.y * lineStart.x);
+  return num / Math.sqrt(lenSq);
+}
+
+/** Douglas-Peucker line simplification for freehand paths */
+export function simplifyPath(points: Point[], epsilon: number): Point[] {
+  if (points.length <= 2) return points;
+  let maxDist = 0;
+  let maxIdx = 0;
+  const first = points[0];
+  const last = points[points.length - 1];
+  for (let i = 1; i < points.length - 1; i++) {
+    const d = perpendicularDistance(points[i], first, last);
+    if (d > maxDist) { maxDist = d; maxIdx = i; }
+  }
+  if (maxDist > epsilon) {
+    const left = simplifyPath(points.slice(0, maxIdx + 1), epsilon);
+    const right = simplifyPath(points.slice(maxIdx), epsilon);
+    return [...left.slice(0, -1), ...right];
+  }
+  return [first, last];
 }

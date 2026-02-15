@@ -191,6 +191,7 @@ export const useMeasurementStore = create<MeasurementState>((set, get) => ({
         return {
           ...m,
           points: m.points.map((p) => ({ x: p.x + dx, y: p.y + dy })),
+          ...(m.center ? { center: { x: m.center.x + dx, y: m.center.y + dy } } : {}),
         };
       }
       // 3D measurements are not affected by 2D coordinate adjustments

@@ -1,6 +1,6 @@
 import { Measurement, Measurement3D, AngleMeasurement, AreaMeasurement, Annotation, AnyMeasurement, Unit } from '@/types/measurement';
 import { calcRealValue } from './calculations';
-import { drawMeasurementLine, drawAngleMeasurement, drawAreaMeasurement, drawAnnotationLeader, drawLabel } from './canvas-rendering';
+import { drawMeasurementLine, drawAngleMeasurement, drawAreaMeasurement, drawCircleAreaMeasurement, drawFreehandAreaMeasurement, drawAnnotationLeader, drawLabel } from './canvas-rendering';
 import { calcRealDistance, calcRealArea, calcReal3DDistance } from './calculations';
 import { hasLatex, renderNameLabelImage } from './latex-export';
 
@@ -81,10 +81,13 @@ export function generateJSON(
       return {
         name: m.name,
         type: 'area' as const,
+        areaKind: area.areaKind,
         pixelArea: Math.round(area.pixelArea * 100) / 100,
         realArea: realArea ?? null,
         unit: area.unitOverride ?? refUnit,
         points: area.points.map((p) => ({ x: Math.round(p.x), y: Math.round(p.y) })),
+        ...(area.center ? { center: { x: Math.round(area.center.x), y: Math.round(area.center.y) } } : {}),
+        ...(area.radius != null ? { radius: Math.round(area.radius * 100) / 100 } : {}),
       };
     }
     if (m.type === 'angle') {
@@ -184,8 +187,13 @@ function getExportNameLabelPos(m: AnyMeasurement): { x: number; y: number } | nu
     x = v.x + labelDist * Math.cos(labelAngle);
     y = v.y + labelDist * Math.sin(labelAngle) + 22;
   } else if (m.type === 'area') {
-    x = m.points.reduce((s, p) => s + p.x, 0) / m.points.length;
-    y = m.points.reduce((s, p) => s + p.y, 0) / m.points.length + 22;
+    if (m.center) {
+      x = m.center.x;
+      y = m.center.y + 22;
+    } else {
+      x = m.points.reduce((s, p) => s + p.x, 0) / m.points.length;
+      y = m.points.reduce((s, p) => s + p.y, 0) / m.points.length + 22;
+    }
   } else {
     const meas = m as Measurement;
     x = (meas.start.x + meas.end.x) / 2;
@@ -234,7 +242,13 @@ export async function renderAnnotatedImage(
     } else if (m.type === 'area') {
       const area = m as AreaMeasurement;
       const label = calcRealArea(area.pixelArea, reference, refValue, refUnit, area.unitOverride) ?? `${area.pixelArea.toFixed(0)} px\u00B2`;
-      drawAreaMeasurement(ctx, area, false, transform, label, undefined, true);
+      if (area.areaKind === 'circle-3pt' || area.areaKind === 'circle-center') {
+        drawCircleAreaMeasurement(ctx, area, false, transform, label, undefined, true);
+      } else if (area.areaKind === 'freehand') {
+        drawFreehandAreaMeasurement(ctx, area, false, transform, label, undefined, true);
+      } else {
+        drawAreaMeasurement(ctx, area, false, transform, label, undefined, true);
+      }
     } else if (m.type === 'angle') {
       drawAngleMeasurement(ctx, m, false, transform, undefined, true);
     } else {

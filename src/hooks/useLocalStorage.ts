@@ -2,7 +2,7 @@
 
 import { useCallback } from 'react';
 import { useMeasurementStore } from '@/stores/useMeasurementStore';
-import { SavedProject } from '@/types/measurement';
+import { SavedProject, AreaMeasurement } from '@/types/measurement';
 
 const KEY_PREFIX = 'measureit_projects_';
 
@@ -67,6 +67,10 @@ export function useLocalStorage() {
       store.clearAll();
       for (const m of project.measurements) {
         if (m.type === 'area') {
+          // Migration: old projects may lack areaKind
+          if (!(m as AreaMeasurement).areaKind) {
+            (m as AreaMeasurement).areaKind = 'polygon';
+          }
           store.addArea(m);
         } else if (m.type === 'angle') {
           store.addAngle(m);

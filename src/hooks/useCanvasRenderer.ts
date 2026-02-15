@@ -7,7 +7,7 @@ import { useUIStore } from '@/stores/useUIStore';
 import { renderImage, renderOverlay, drawInProgressCrop, drawCropOverlay } from '@/lib/canvas-rendering';
 import { calcRealDistance, calcRealArea } from '@/lib/calculations';
 import { pixelDist } from '@/lib/geometry';
-import { Measurement, AreaMeasurement, AnyMeasurement, LabelBounds } from '@/types/measurement';
+import { Measurement, AreaMeasurement, AnyMeasurement, LabelBounds, isAreaMode } from '@/types/measurement';
 
 export function useCanvasRenderer(
   imageCanvasRef: RefObject<HTMLCanvasElement | null>,
@@ -62,7 +62,7 @@ export function useCanvasRenderer(
       const canvasW = rect.width;
       const canvasH = rect.height;
 
-      const { image, transform, isDrawing, drawStart, drawCurrent, angleStep, angleVertex, angleArmA, areaPoints, snapPoint, isCropping, cropStart, cropCurrent } =
+      const { image, transform, isDrawing, drawStart, drawCurrent, angleStep, angleVertex, angleArmA, areaPoints, snapPoint, isCropping, cropStart, cropCurrent, freehandPoints, isFreehandDrawing, circle3PtPoints, circleCenterPoint } =
         useCanvasStore.getState();
       const { measurements, referenceValue, referenceUnit } =
         useMeasurementStore.getState();
@@ -126,10 +126,36 @@ export function useCanvasRenderer(
 
       // Area draw state for in-progress polygon
       let areaDrawState: Parameters<typeof renderOverlay>[9];
-      if (mode === 'area' && areaPoints.length > 0) {
+      if ((mode === 'area' || mode === 'area-polygon') && areaPoints.length > 0) {
         areaDrawState = {
           points: areaPoints,
           cursorPos: drawCurrent,
+        };
+      }
+
+      // Circle-3-point draw state
+      let circle3PtDrawState: Parameters<typeof renderOverlay>[13];
+      if (mode === 'area-circle-3pt' && circle3PtPoints.length > 0) {
+        circle3PtDrawState = {
+          points: circle3PtPoints,
+          cursorPos: drawCurrent,
+        };
+      }
+
+      // Circle-center draw state
+      let circleCenterDrawState: Parameters<typeof renderOverlay>[14];
+      if (mode === 'area-circle-center' && circleCenterPoint) {
+        circleCenterDrawState = {
+          center: circleCenterPoint,
+          cursorPos: drawCurrent,
+        };
+      }
+
+      // Freehand draw state
+      let freehandDrawState: Parameters<typeof renderOverlay>[15];
+      if (mode === 'area-freehand' && isFreehandDrawing && freehandPoints.length > 0) {
+        freehandDrawState = {
+          points: freehandPoints,
         };
       }
 
@@ -147,7 +173,10 @@ export function useCanvasRenderer(
         areaDrawState,
         snapPoint,
         labelBoundsRef?.current,
-        { enabled: gridEnabled, spacing: gridSpacing, imageWidth: image?.width, imageHeight: image?.height }
+        { enabled: gridEnabled, spacing: gridSpacing, imageWidth: image?.width, imageHeight: image?.height },
+        circle3PtDrawState,
+        circleCenterDrawState,
+        freehandDrawState
       );
 
       // Crop overlay (drawn on top of everything)

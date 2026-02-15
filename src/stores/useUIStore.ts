@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { DrawMode, Point, ViewMode } from '@/types/measurement';
+import { DrawMode, Point, ViewMode, isAreaMode } from '@/types/measurement';
 
 interface UIState {
   mode: DrawMode;
@@ -28,6 +28,10 @@ interface UIState {
 
   // 3D display options
   show3DAxisDistances: boolean;
+
+  // Last-used area tool
+  lastAreaTool: DrawMode;
+  setLastAreaTool: (mode: DrawMode) => void;
 
   setViewMode: (viewMode: ViewMode) => void;
   setMode: (mode: DrawMode) => void;
@@ -97,9 +101,34 @@ export const useUIStore = create<UIState>((set, get) => ({
 
   show3DAxisDistances: false,
 
+  lastAreaTool: (() => {
+    if (typeof window === 'undefined') return 'area-polygon' as DrawMode;
+    try {
+      const saved = localStorage.getItem('measureit_last_area_tool');
+      return (saved as DrawMode) || 'area-polygon';
+    } catch { return 'area-polygon' as DrawMode; }
+  })(),
+
+  setLastAreaTool: (mode) => {
+    set({ lastAreaTool: mode });
+    try { localStorage.setItem('measureit_last_area_tool', mode); } catch {}
+  },
+
   setViewMode: (viewMode) => set({ viewMode, mode: 'none' }),
-  setMode: (mode) => set({ mode }),
-  toggleMode: (mode) => set({ mode: get().mode === mode ? 'none' : mode }),
+  setMode: (mode) => {
+    set({ mode });
+    if (isAreaMode(mode) && mode !== 'area') {
+      get().setLastAreaTool(mode);
+    }
+  },
+  toggleMode: (mode) => {
+    const current = get().mode;
+    const newMode = current === mode ? 'none' : mode;
+    set({ mode: newMode });
+    if (isAreaMode(mode) && mode !== 'area' && newMode !== 'none') {
+      get().setLastAreaTool(mode);
+    }
+  },
   selectMeasurement: (id) =>
     set({ selectedMeasurementId: get().selectedMeasurementId === id ? null : id }),
   toggleSidebar: () => set({ sidebarOpen: !get().sidebarOpen }),

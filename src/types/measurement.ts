@@ -1,7 +1,29 @@
 export type MeasurementType = 'reference' | 'measure' | 'angle' | 'area' | 'annotation' | 'reference3d' | 'measure3d';
-export type DrawMode = 'none' | 'reference' | 'measure' | 'angle' | 'area' | 'annotation' | 'reference3d' | 'measure3d';
+export type DrawMode =
+  | 'none'
+  | 'reference' | 'measure' | 'angle'
+  | 'area' | 'area-polygon' | 'area-freehand' | 'area-circle-3pt' | 'area-circle-center'
+  | 'annotation'
+  | 'reference3d' | 'measure3d';
 export type ViewMode = '2d' | '3d';
 export type Unit = 'mm' | 'cm' | 'm' | 'in' | 'px';
+
+export type AreaKind = 'polygon' | 'freehand' | 'circle-3pt' | 'circle-center';
+
+/** Check if a DrawMode is any area sub-mode */
+export function isAreaMode(mode: DrawMode): boolean {
+  return mode === 'area' || mode.startsWith('area-');
+}
+
+/** Get the category of a DrawMode */
+export function modeCategory(mode: DrawMode): string {
+  if (mode === 'none') return 'none';
+  if (isAreaMode(mode)) return 'area';
+  if (mode === 'reference' || mode === 'measure' || mode === 'angle') return 'measure';
+  if (mode === 'annotation') return 'annotate';
+  if (mode.endsWith('3d')) return '3d';
+  return 'other';
+}
 
 export interface Point {
   x: number;
@@ -47,6 +69,7 @@ export interface AngleMeasurement {
 export interface AreaMeasurement {
   id: string;
   type: 'area';
+  areaKind: AreaKind;
   points: Point[];
   pixelArea: number;
   name: string;
@@ -56,6 +79,9 @@ export interface AreaMeasurement {
   labelOffset?: Point;
   nameLabelOffset?: Point;
   fontSize?: number;
+  // Circle-specific fields (only for circle-3pt and circle-center)
+  center?: Point;
+  radius?: number;
 }
 
 export interface Annotation {

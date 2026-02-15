@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { Point, Point3D, ViewTransform, AngleMeasurement, AreaMeasurement, Measurement3D } from '@/types/measurement';
-import { pixelDist, snapToAxis, calcAngleDeg, calcPolygonArea } from '@/lib/geometry';
+import { pixelDist, snapToAxis, calcAngleDeg, calcPolygonArea, circumscribedCircle, circleArea, simplifyPath } from '@/lib/geometry';
 
 interface CanvasState {
   image: HTMLImageElement | null;
@@ -27,6 +27,16 @@ interface CanvasState {
 
   // Polygon drawing state
   areaPoints: Point[];
+
+  // Freehand drawing state
+  freehandPoints: Point[];
+  isFreehandDrawing: boolean;
+
+  // Circle-3-point drawing state
+  circle3PtPoints: Point[];
+
+  // Circle-center drawing state
+  circleCenterPoint: Point | null;
 
   setImage: (img: HTMLImageElement, fileName?: string) => void;
   createBlankCanvas: (width: number, height: number) => void;
@@ -60,6 +70,22 @@ interface CanvasState {
   addAreaPoint: (pt: Point) => void;
   finishArea: () => AreaMeasurement | null;
   cancelArea: () => void;
+
+  // Freehand drawing actions
+  startFreehand: (pt: Point) => void;
+  addFreehandPoint: (pt: Point) => void;
+  finishFreehand: () => AreaMeasurement | null;
+  cancelFreehand: () => void;
+
+  // Circle-3-point drawing actions
+  addCircle3PtPoint: (pt: Point) => void;
+  finishCircle3Pt: () => AreaMeasurement | null;
+  cancelCircle3Pt: () => void;
+
+  // Circle-center drawing actions
+  startCircleCenter: (center: Point) => void;
+  finishCircleCenter: (edgePt: Point) => AreaMeasurement | null;
+  cancelCircleCenter: () => void;
 
   // 3D model state
   modelUrl: string | null;
@@ -113,6 +139,16 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
 
   // Polygon drawing
   areaPoints: [],
+
+  // Freehand drawing
+  freehandPoints: [],
+  isFreehandDrawing: false,
+
+  // Circle-3-point drawing
+  circle3PtPoints: [],
+
+  // Circle-center drawing
+  circleCenterPoint: null,
 
   // 3D model
   modelUrl: null,
@@ -306,6 +342,7 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
     const result: AreaMeasurement = {
       id: crypto.randomUUID(),
       type: 'area',
+      areaKind: 'polygon',
       points: [...areaPoints],
       pixelArea,
       name: '',
@@ -315,6 +352,84 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
     return result;
   },
   cancelArea: () => set({ areaPoints: [] }),
+
+  // Freehand drawing
+  startFreehand: (pt) => set({ isFreehandDrawing: true, freehandPoints: [pt] }),
+  addFreehandPoint: (pt) => {
+    const { freehandPoints } = get();
+    if (freehandPoints.length === 0) return;
+    const last = freehandPoints[freehandPoints.length - 1];
+    const dx = pt.x - last.x;
+    const dy = pt.y - last.y;
+    if (dx * dx + dy * dy < 9) return; // skip if < 3px movement
+    set({ freehandPoints: [...freehandPoints, pt] });
+  },
+  finishFreehand: () => {
+    const { freehandPoints } = get();
+    set({ isFreehandDrawing: false, freehandPoints: [] });
+    if (freehandPoints.length < 10) return null;
+    const simplified = simplifyPath(freehandPoints, 2.0);
+    const pixelArea = calcPolygonArea(simplified);
+    return {
+      id: crypto.randomUUID(),
+      type: 'area',
+      areaKind: 'freehand',
+      points: simplified,
+      pixelArea,
+      name: '',
+      createdAt: Date.now(),
+    } as AreaMeasurement;
+  },
+  cancelFreehand: () => set({ isFreehandDrawing: false, freehandPoints: [] }),
+
+  // Circle-3-point drawing
+  addCircle3PtPoint: (pt) => {
+    const { circle3PtPoints } = get();
+    if (circle3PtPoints.length < 3) {
+      set({ circle3PtPoints: [...circle3PtPoints, pt] });
+    }
+  },
+  finishCircle3Pt: () => {
+    const { circle3PtPoints } = get();
+    set({ circle3PtPoints: [] });
+    if (circle3PtPoints.length !== 3) return null;
+    const result = circumscribedCircle(circle3PtPoints[0], circle3PtPoints[1], circle3PtPoints[2]);
+    if (!result) return null; // collinear
+    return {
+      id: crypto.randomUUID(),
+      type: 'area',
+      areaKind: 'circle-3pt',
+      points: [...circle3PtPoints],
+      pixelArea: circleArea(result.radius),
+      center: result.center,
+      radius: result.radius,
+      name: '',
+      createdAt: Date.now(),
+    } as AreaMeasurement;
+  },
+  cancelCircle3Pt: () => set({ circle3PtPoints: [] }),
+
+  // Circle-center drawing
+  startCircleCenter: (center) => set({ circleCenterPoint: center }),
+  finishCircleCenter: (edgePt) => {
+    const { circleCenterPoint } = get();
+    set({ circleCenterPoint: null });
+    if (!circleCenterPoint) return null;
+    const radius = pixelDist(circleCenterPoint, edgePt);
+    if (radius < 3) return null;
+    return {
+      id: crypto.randomUUID(),
+      type: 'area',
+      areaKind: 'circle-center',
+      points: [circleCenterPoint, edgePt],
+      pixelArea: circleArea(radius),
+      center: circleCenterPoint,
+      radius,
+      name: '',
+      createdAt: Date.now(),
+    } as AreaMeasurement;
+  },
+  cancelCircleCenter: () => set({ circleCenterPoint: null }),
 
   // 3D model actions
   setModel: (url, fileName, fileType) => set({ modelUrl: url, modelFileName: fileName, modelFileType: fileType }),
@@ -396,6 +511,10 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
       angleVertex: null,
       angleArmA: null,
       areaPoints: [],
+      freehandPoints: [],
+      isFreehandDrawing: false,
+      circle3PtPoints: [],
+      circleCenterPoint: null,
       modelUrl: null,
       modelFileName: null,
       modelFileType: null,

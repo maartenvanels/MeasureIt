@@ -11,7 +11,11 @@ const modeLabels: Record<string, string> = {
   reference: 'Reference',
   measure: 'Measure',
   angle: 'Angle',
-  area: 'Area',
+  area: 'Area (Polygon)',
+  'area-polygon': 'Area (Polygon)',
+  'area-freehand': 'Area (Freehand)',
+  'area-circle-3pt': 'Area (Circle 3pt)',
+  'area-circle-center': 'Area (Circle Center)',
   annotation: 'Annotate',
 };
 
