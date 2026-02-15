@@ -1,5 +1,5 @@
 import { Measurement, AngleMeasurement, AreaMeasurement, Annotation, AnyMeasurement, ViewTransform, DrawMode, Point, LabelBounds } from '@/types/measurement';
-import { imageToScreen } from './geometry';
+import { imageToScreen, screenToImage } from './geometry';
 
 export const DEFAULT_COLORS: Record<string, string> = {
   reference: '#e11d48',
@@ -131,6 +131,51 @@ export function drawAnnotationLeader(
   // Arrowhead at target
   const angle = Math.atan2(from.y - to.y, from.x - to.x);
   drawEndMarker(ctx, to.x, to.y, angle, color);
+
+  ctx.restore();
+}
+
+export function drawGrid(
+  ctx: CanvasRenderingContext2D,
+  canvasWidth: number,
+  canvasHeight: number,
+  transform: ViewTransform,
+  spacing: number,
+  imageWidth?: number,
+  imageHeight?: number
+) {
+  ctx.save();
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.08)';
+  ctx.lineWidth = 1;
+
+  const topLeft = screenToImage(0, 0, transform);
+  const bottomRight = screenToImage(canvasWidth, canvasHeight, transform);
+
+  const minX = imageWidth ? Math.max(0, topLeft.x) : topLeft.x;
+  const minY = imageHeight ? Math.max(0, topLeft.y) : topLeft.y;
+  const maxX = imageWidth ? Math.min(imageWidth, bottomRight.x) : bottomRight.x;
+  const maxY = imageHeight ? Math.min(imageHeight, bottomRight.y) : bottomRight.y;
+
+  const startX = Math.floor(minX / spacing) * spacing;
+  const startY = Math.floor(minY / spacing) * spacing;
+
+  for (let x = startX; x <= maxX; x += spacing) {
+    const s = imageToScreen(x, minY, transform);
+    const e = imageToScreen(x, maxY, transform);
+    ctx.beginPath();
+    ctx.moveTo(s.x, s.y);
+    ctx.lineTo(e.x, e.y);
+    ctx.stroke();
+  }
+
+  for (let y = startY; y <= maxY; y += spacing) {
+    const s = imageToScreen(minX, y, transform);
+    const e = imageToScreen(maxX, y, transform);
+    ctx.beginPath();
+    ctx.moveTo(s.x, s.y);
+    ctx.lineTo(e.x, e.y);
+    ctx.stroke();
+  }
 
   ctx.restore();
 }
@@ -545,10 +590,16 @@ export function renderOverlay(
     cursorPos: Point | null;
   },
   snapPoint?: Point | null,
-  labelBoundsOut?: LabelBounds[]
+  labelBoundsOut?: LabelBounds[],
+  gridConfig?: { enabled: boolean; spacing: number; imageWidth?: number; imageHeight?: number }
 ) {
   ctx.clearRect(0, 0, canvasWidth, canvasHeight);
   if (labelBoundsOut) labelBoundsOut.length = 0;
+
+  // Draw grid first (behind everything)
+  if (gridConfig?.enabled) {
+    drawGrid(ctx, canvasWidth, canvasHeight, transform, gridConfig.spacing, gridConfig.imageWidth, gridConfig.imageHeight);
+  }
 
   for (const m of measurements) {
     if (m.type === 'annotation') continue; // rendered as HTML overlay (including leader lines)

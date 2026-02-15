@@ -39,6 +39,11 @@ export function useKeyboardShortcuts() {
             ui.setCropMode(!ui.cropMode);
           }
           break;
+        case 'g':
+          if (!e.ctrlKey && !e.metaKey) {
+            useUIStore.getState().toggleGrid();
+          }
+          break;
         case 'escape':
           if (useUIStore.getState().cropMode) {
             cancelCropDraw();

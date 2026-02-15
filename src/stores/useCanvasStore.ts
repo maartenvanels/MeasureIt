@@ -5,6 +5,7 @@ import { pixelDist, snapToAxis, calcAngleDeg, calcPolygonArea } from '@/lib/geom
 interface CanvasState {
   image: HTMLImageElement | null;
   imageFileName: string | null;
+  blankCanvasSize: { width: number; height: number } | null;
   transform: ViewTransform;
   isDrawing: boolean;
   drawStart: Point | null;
@@ -28,6 +29,7 @@ interface CanvasState {
   areaPoints: Point[];
 
   setImage: (img: HTMLImageElement, fileName?: string) => void;
+  createBlankCanvas: (width: number, height: number) => void;
   setSnapPoint: (p: Point | null) => void;
   setTransform: (t: Partial<ViewTransform>) => void;
   fitImageToContainer: (containerWidth: number, containerHeight: number) => void;
@@ -73,6 +75,7 @@ interface CanvasState {
 export const useCanvasStore = create<CanvasState>((set, get) => ({
   image: null,
   imageFileName: null,
+  blankCanvasSize: null,
   transform: { panX: 0, panY: 0, zoom: 1 },
   isDrawing: false,
   drawStart: null,
@@ -100,7 +103,21 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
   cropCurrent: null,
   isCropping: false,
 
-  setImage: (img, fileName) => set({ image: img, imageFileName: fileName ?? null }),
+  setImage: (img, fileName) => set({ image: img, imageFileName: fileName ?? null, blankCanvasSize: null }),
+
+  createBlankCanvas: (width, height) => {
+    const offscreen = document.createElement('canvas');
+    offscreen.width = width;
+    offscreen.height = height;
+    const ctx = offscreen.getContext('2d')!;
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, width, height);
+    const img = new window.Image();
+    img.onload = () => {
+      set({ image: img, imageFileName: null, blankCanvasSize: { width, height } });
+    };
+    img.src = offscreen.toDataURL('image/png');
+  },
   setSnapPoint: (p) => set({ snapPoint: p }),
 
   setTransform: (t) =>

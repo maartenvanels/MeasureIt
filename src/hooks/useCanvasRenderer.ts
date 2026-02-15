@@ -66,7 +66,7 @@ export function useCanvasRenderer(
         useCanvasStore.getState();
       const { measurements, referenceValue, referenceUnit } =
         useMeasurementStore.getState();
-      const { selectedMeasurementId, mode, cropMode, cropBounds } = useUIStore.getState();
+      const { selectedMeasurementId, mode, cropMode, cropBounds, gridEnabled, gridSpacing } = useUIStore.getState();
 
       // Render image
       if (image) {
@@ -141,7 +141,8 @@ export function useCanvasRenderer(
         angleDrawState,
         areaDrawState,
         snapPoint,
-        labelBoundsRef?.current
+        labelBoundsRef?.current,
+        { enabled: gridEnabled, spacing: gridSpacing, imageWidth: image?.width, imageHeight: image?.height }
       );
 
       // Crop overlay (drawn on top of everything)

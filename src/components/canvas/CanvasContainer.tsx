@@ -103,7 +103,7 @@ export function CanvasContainer() {
       <MeasurementNameOverlay />
       <AnnotationOverlay />
       <CropConfirmOverlay containerRef={containerRef} />
-      {!image && <DropZone />}
+      {!image && <DropZone containerRef={containerRef} />}
       <ZoomControls containerRef={containerRef} />
       <input type="file" id="fileInput" accept="image/*" className="hidden" />
     </div>

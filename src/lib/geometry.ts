@@ -69,9 +69,11 @@ export function findSnapPoint(
   imgPoint: Point,
   measurements: AnyMeasurement[],
   transform: ViewTransform,
-  screenThreshold = 12
+  screenThreshold = 12,
+  excludeId?: string
 ): Point | null {
-  const endpoints = getAllEndpoints(measurements);
+  const filtered = excludeId ? measurements.filter(m => m.id !== excludeId) : measurements;
+  const endpoints = getAllEndpoints(filtered);
   const screenPt = imageToScreen(imgPoint.x, imgPoint.y, transform);
 
   let nearest: Point | null = null;
@@ -87,6 +89,14 @@ export function findSnapPoint(
   }
 
   return nearest;
+}
+
+/** Snap a point to the nearest grid intersection */
+export function snapToGrid(point: Point, gridSpacing: number): Point {
+  return {
+    x: Math.round(point.x / gridSpacing) * gridSpacing,
+    y: Math.round(point.y / gridSpacing) * gridSpacing,
+  };
 }
 
 /** Calculate polygon area using the Shoelace formula (in pixel² units) */

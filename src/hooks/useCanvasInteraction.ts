@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, RefObject } from 'react';
 import { useCanvasStore } from '@/stores/useCanvasStore';
 import { useUIStore } from '@/stores/useUIStore';
 import { useMeasurementStore } from '@/stores/useMeasurementStore';
-import { screenToImage, findSnapPoint, snapToAxis, imageToScreen } from '@/lib/geometry';
+import { screenToImage, findSnapPoint, snapToAxis, imageToScreen, snapToGrid, pixelDist } from '@/lib/geometry';
 import { Annotation, Measurement, LabelBounds } from '@/types/measurement';
 
 function pointerDist(a: { x: number; y: number }, b: { x: number; y: number }): number {
@@ -49,16 +49,31 @@ export function useCanvasInteraction(
     otherPoint: { x: number; y: number };
   } | null>(null);
 
-  /** Get image point with snap-to-point applied */
-  const getSnappedPoint = (mx: number, my: number) => {
+  /** Get image point with snap-to-point and grid snap applied */
+  const getSnappedPoint = (mx: number, my: number, excludeId?: string) => {
     const state = canvasStore.getState();
     const imgPt = screenToImage(mx, my, state.transform);
     const measurements = measurementStore.getState().measurements;
-    const snap = findSnapPoint(imgPt, measurements, state.transform);
+
+    // Priority 1: snap to existing endpoints
+    const snap = findSnapPoint(imgPt, measurements, state.transform, 12, excludeId);
     if (snap) {
       state.setSnapPoint(snap);
       return snap;
     }
+
+    // Priority 2: snap to grid
+    const { gridEnabled, gridSpacing } = uiStore.getState();
+    if (gridEnabled) {
+      const gridPt = snapToGrid(imgPt, gridSpacing);
+      const gridScreen = imageToScreen(gridPt.x, gridPt.y, state.transform);
+      const mouseScreen = imageToScreen(imgPt.x, imgPt.y, state.transform);
+      if (pixelDist(gridScreen, mouseScreen) < 12) {
+        state.setSnapPoint(gridPt);
+        return gridPt;
+      }
+    }
+
     state.setSnapPoint(null);
     return imgPt;
   };
@@ -299,7 +314,28 @@ export function useCanvasInteraction(
         const transform = canvasStore.getState().transform;
         const dx = (mx - drag.startX) / transform.zoom;
         const dy = (my - drag.startY) / transform.zoom;
-        const newTarget = { x: drag.origTarget.x + dx, y: drag.origTarget.y + dy };
+        let newTarget = { x: drag.origTarget.x + dx, y: drag.origTarget.y + dy };
+        const measurements = measurementStore.getState().measurements;
+        const snap = findSnapPoint(newTarget, measurements, transform, 12, drag.annotationId);
+        if (snap) {
+          newTarget = snap;
+          canvasStore.getState().setSnapPoint(snap);
+        } else {
+          const { gridEnabled, gridSpacing } = uiStore.getState();
+          if (gridEnabled) {
+            const gridPt = snapToGrid(newTarget, gridSpacing);
+            const gs = imageToScreen(gridPt.x, gridPt.y, transform);
+            const rs = imageToScreen(newTarget.x, newTarget.y, transform);
+            if (pixelDist(gs, rs) < 12) {
+              newTarget = gridPt;
+              canvasStore.getState().setSnapPoint(gridPt);
+            } else {
+              canvasStore.getState().setSnapPoint(null);
+            }
+          } else {
+            canvasStore.getState().setSnapPoint(null);
+          }
+        }
         measurementStore.getState().updateMeasurement(drag.annotationId, { arrowTarget: newTarget });
         return;
       }
@@ -310,7 +346,28 @@ export function useCanvasInteraction(
         const transform = canvasStore.getState().transform;
         const dx = (mx - drag.startX) / transform.zoom;
         const dy = (my - drag.startY) / transform.zoom;
-        const newPoint = { x: drag.origPoint.x + dx, y: drag.origPoint.y + dy };
+        let newPoint = { x: drag.origPoint.x + dx, y: drag.origPoint.y + dy };
+        const measurements = measurementStore.getState().measurements;
+        const snap = findSnapPoint(newPoint, measurements, transform, 12, drag.measurementId);
+        if (snap) {
+          newPoint = snap;
+          canvasStore.getState().setSnapPoint(snap);
+        } else {
+          const { gridEnabled, gridSpacing } = uiStore.getState();
+          if (gridEnabled) {
+            const gridPt = snapToGrid(newPoint, gridSpacing);
+            const gs = imageToScreen(gridPt.x, gridPt.y, transform);
+            const rs = imageToScreen(newPoint.x, newPoint.y, transform);
+            if (pixelDist(gs, rs) < 12) {
+              newPoint = gridPt;
+              canvasStore.getState().setSnapPoint(gridPt);
+            } else {
+              canvasStore.getState().setSnapPoint(null);
+            }
+          } else {
+            canvasStore.getState().setSnapPoint(null);
+          }
+        }
         const other = drag.otherPoint;
         const pixelLength = Math.sqrt((newPoint.x - other.x) ** 2 + (newPoint.y - other.y) ** 2);
         measurementStore.getState().updateMeasurement(drag.measurementId, {
@@ -433,12 +490,14 @@ export function useCanvasInteraction(
       // Release arrow target drag
       if (arrowTargetDrag.current) {
         arrowTargetDrag.current = null;
+        canvasStore.getState().setSnapPoint(null);
         return;
       }
 
       // Release endpoint drag
       if (endpointDrag.current) {
         endpointDrag.current = null;
+        canvasStore.getState().setSnapPoint(null);
         return;
       }
 

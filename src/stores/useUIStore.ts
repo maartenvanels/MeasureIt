@@ -17,6 +17,10 @@ interface UIState {
   // Arrow draw for annotations
   arrowDrawAnnotationId: string | null;
 
+  // Grid
+  gridEnabled: boolean;
+  gridSpacing: number;
+
   // Crop mode
   cropMode: boolean;
   cropBounds: { x: number; y: number; w: number; h: number } | null;
@@ -38,6 +42,11 @@ interface UIState {
   // Arrow draw actions
   startArrowDraw: (annotationId: string) => void;
   cancelArrowDraw: () => void;
+
+  // Grid actions
+  setGridEnabled: (enabled: boolean) => void;
+  setGridSpacing: (spacing: number) => void;
+  toggleGrid: () => void;
 
   // Crop actions
   setCropMode: (active: boolean) => void;
@@ -65,6 +74,15 @@ export const useUIStore = create<UIState>((set, get) => ({
 
   arrowDrawAnnotationId: null,
 
+  gridEnabled: false,
+  gridSpacing: (() => {
+    if (typeof window === 'undefined') return 50;
+    try {
+      const saved = localStorage.getItem('measureit_grid_spacing');
+      return saved ? Math.max(5, Math.min(500, Number(saved))) : 50;
+    } catch { return 50; }
+  })(),
+
   cropMode: false,
   cropBounds: null,
 
@@ -91,6 +109,14 @@ export const useUIStore = create<UIState>((set, get) => ({
 
   startArrowDraw: (annotationId) => set({ arrowDrawAnnotationId: annotationId, mode: 'none' }),
   cancelArrowDraw: () => set({ arrowDrawAnnotationId: null }),
+
+  setGridEnabled: (enabled) => set({ gridEnabled: enabled }),
+  setGridSpacing: (spacing) => {
+    const clamped = Math.max(5, Math.min(500, spacing));
+    set({ gridSpacing: clamped });
+    try { localStorage.setItem('measureit_grid_spacing', String(clamped)); } catch {}
+  },
+  toggleGrid: () => set({ gridEnabled: !get().gridEnabled }),
 
   setCropMode: (active) => set({ cropMode: active, cropBounds: null, mode: active ? 'none' : get().mode }),
   setCropBounds: (bounds) => set({ cropBounds: bounds }),
