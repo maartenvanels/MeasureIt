@@ -81,6 +81,8 @@ export interface Measurement3D {
   color?: string;
   unitOverride?: Unit;
   fontSize?: number;
+  labelOffset?: Point;
+  nameLabelOffset?: Point;
 }
 
 export type AnyMeasurement = Measurement | AngleMeasurement | AreaMeasurement | Annotation | Measurement3D;
