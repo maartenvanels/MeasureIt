@@ -551,12 +551,7 @@ export function renderOverlay(
   if (labelBoundsOut) labelBoundsOut.length = 0;
 
   for (const m of measurements) {
-    if (m.type === 'annotation') {
-      if ((m as Annotation).arrowTarget) {
-        drawAnnotationLeader(ctx, m as Annotation, m.id === selectedId, transform);
-      }
-      continue; // text rendered as HTML overlay
-    }
+    if (m.type === 'annotation') continue; // rendered as HTML overlay (including leader lines)
     if (m.type === 'angle') {
       drawAngleMeasurement(ctx, m, m.id === selectedId, transform, labelBoundsOut, true);
     } else if (m.type === 'area') {
