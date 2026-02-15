@@ -5,7 +5,7 @@ import { useCanvasStore } from '@/stores/useCanvasStore';
 import { useUIStore } from '@/stores/useUIStore';
 import { useMeasurementStore } from '@/stores/useMeasurementStore';
 import { screenToImage, findSnapPoint, snapToAxis, imageToScreen } from '@/lib/geometry';
-import { Annotation, LabelBounds } from '@/types/measurement';
+import { Annotation, Measurement, LabelBounds } from '@/types/measurement';
 
 function pointerDist(a: { x: number; y: number }, b: { x: number; y: number }): number {
   return Math.sqrt((b.x - a.x) ** 2 + (b.y - a.y) ** 2);
@@ -37,6 +37,16 @@ export function useCanvasInteraction(
     startX: number;
     startY: number;
     origTarget: { x: number; y: number };
+  } | null>(null);
+
+  // Endpoint drag state (for adjusting reference/measure line endpoints)
+  const endpointDrag = useRef<{
+    measurementId: string;
+    endpoint: 'start' | 'end';
+    startX: number;
+    startY: number;
+    origPoint: { x: number; y: number };
+    otherPoint: { x: number; y: number };
   } | null>(null);
 
   /** Get image point with snap-to-point applied */
@@ -118,6 +128,34 @@ export function useCanvasInteraction(
             canvas.setPointerCapture(e.pointerId);
             e.preventDefault();
             return;
+          }
+        }
+      }
+
+      // Endpoint drag: check if clicking near start/end of reference/measure lines
+      if (e.button === 0 && mode === 'none') {
+        const transform = canvasStore.getState().transform;
+        const lines = measurementStore.getState().measurements.filter(
+          (m): m is Measurement => m.type === 'reference' || m.type === 'measure'
+        );
+        for (const line of lines) {
+          for (const ep of ['start', 'end'] as const) {
+            const pt = line[ep];
+            const screenPt = imageToScreen(pt.x, pt.y, transform);
+            if (pointerDist({ x: mx, y: my }, screenPt) < 12) {
+              const other = ep === 'start' ? line.end : line.start;
+              endpointDrag.current = {
+                measurementId: line.id,
+                endpoint: ep,
+                startX: mx,
+                startY: my,
+                origPoint: { ...pt },
+                otherPoint: { ...other },
+              };
+              canvas.setPointerCapture(e.pointerId);
+              e.preventDefault();
+              return;
+            }
           }
         }
       }
@@ -266,6 +304,22 @@ export function useCanvasInteraction(
         return;
       }
 
+      // Endpoint drag in progress
+      if (endpointDrag.current) {
+        const drag = endpointDrag.current;
+        const transform = canvasStore.getState().transform;
+        const dx = (mx - drag.startX) / transform.zoom;
+        const dy = (my - drag.startY) / transform.zoom;
+        const newPoint = { x: drag.origPoint.x + dx, y: drag.origPoint.y + dy };
+        const other = drag.otherPoint;
+        const pixelLength = Math.sqrt((newPoint.x - other.x) ** 2 + (newPoint.y - other.y) ** 2);
+        measurementStore.getState().updateMeasurement(drag.measurementId, {
+          [drag.endpoint]: newPoint,
+          pixelLength,
+        });
+        return;
+      }
+
       // Crop drawing in progress
       if (state.isCropping) {
         const imgPt = screenToImage(mx, my, state.transform);
@@ -278,19 +332,37 @@ export function useCanvasInteraction(
         return;
       }
 
-      // Label / arrow-target hover cursor (in navigate mode)
+      // Label / arrow-target / endpoint hover cursor (in navigate mode)
       if (mode === 'none' && !uiStore.getState().cropMode) {
         let overInteractive = false;
-        // Check arrow target points
         const transform = canvasStore.getState().transform;
-        const annotations = measurementStore.getState().measurements.filter(
-          (m): m is Annotation => m.type === 'annotation' && !!m.arrowTarget
-        );
-        for (const ann of annotations) {
-          const screenPt = imageToScreen(ann.arrowTarget!.x, ann.arrowTarget!.y, transform);
-          if (pointerDist({ x: mx, y: my }, screenPt) < 12) {
-            overInteractive = true;
-            break;
+        // Check measurement endpoints
+        if (!overInteractive) {
+          const lines = measurementStore.getState().measurements.filter(
+            (m): m is Measurement => m.type === 'reference' || m.type === 'measure'
+          );
+          for (const line of lines) {
+            for (const ep of [line.start, line.end]) {
+              const screenPt = imageToScreen(ep.x, ep.y, transform);
+              if (pointerDist({ x: mx, y: my }, screenPt) < 12) {
+                overInteractive = true;
+                break;
+              }
+            }
+            if (overInteractive) break;
+          }
+        }
+        // Check arrow target points
+        if (!overInteractive) {
+          const annotations = measurementStore.getState().measurements.filter(
+            (m): m is Annotation => m.type === 'annotation' && !!m.arrowTarget
+          );
+          for (const ann of annotations) {
+            const screenPt = imageToScreen(ann.arrowTarget!.x, ann.arrowTarget!.y, transform);
+            if (pointerDist({ x: mx, y: my }, screenPt) < 12) {
+              overInteractive = true;
+              break;
+            }
           }
         }
         // Check label bounds
@@ -361,6 +433,12 @@ export function useCanvasInteraction(
       // Release arrow target drag
       if (arrowTargetDrag.current) {
         arrowTargetDrag.current = null;
+        return;
+      }
+
+      // Release endpoint drag
+      if (endpointDrag.current) {
+        endpointDrag.current = null;
         return;
       }
 
