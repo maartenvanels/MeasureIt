@@ -72,7 +72,9 @@ export function useLocalStorage() {
           store.addAngle(m);
         } else if (m.type === 'annotation') {
           store.addAnnotation(m);
-        } else {
+        } else if (m.type === 'reference3d' || m.type === 'measure3d') {
+          store.addMeasurement3D(m);
+        } else if (m.type === 'reference' || m.type === 'measure') {
           store.addMeasurement(m);
         }
       }

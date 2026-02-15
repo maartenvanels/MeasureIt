@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Upload, HelpCircle, Save, FolderOpen, Trash2 } from 'lucide-react';
+import { Upload, HelpCircle, Save, FolderOpen, Trash2, FilePlus2, Box } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import {
@@ -22,11 +22,19 @@ import { ReferenceInput } from './ReferenceInput';
 import { HistoryButtons } from './HistoryButtons';
 import { ExportMenu } from './ExportMenu';
 import { useUIStore } from '@/stores/useUIStore';
+import { useCanvasStore } from '@/stores/useCanvasStore';
+import { useMeasurementStore } from '@/stores/useMeasurementStore';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { SavedProject } from '@/types/measurement';
 
 export function Toolbar() {
   const setHelpDialogOpen = useUIStore((s) => s.setHelpDialogOpen);
+  const viewMode = useUIStore((s) => s.viewMode);
+  const setViewMode = useUIStore((s) => s.setViewMode);
+  const image = useCanvasStore((s) => s.image);
+  const modelUrl = useCanvasStore((s) => s.modelUrl);
+  const resetCanvas = useCanvasStore((s) => s.reset);
+  const clearAll = useMeasurementStore((s) => s.clearAll);
   const { saveProject, loadProject, listProjects, deleteProject } = useLocalStorage();
   const [projects, setProjects] = useState<SavedProject[]>([]);
 
@@ -77,6 +85,63 @@ export function Toolbar() {
           </Button>
         </TooltipTrigger>
         <TooltipContent>Load an image</TooltipContent>
+      </Tooltip>
+
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => document.getElementById('modelFileInput')?.click()}
+          >
+            <Box className="mr-1.5 h-4 w-4" />
+            3D Model
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent>Load a 3D model (.glb, .stl)</TooltipContent>
+      </Tooltip>
+
+      {/* View mode switcher — only show when both image and model are loaded */}
+      {image && modelUrl && (
+        <div className="flex items-center rounded-md border border-zinc-700">
+          <Button
+            variant={viewMode === '2d' ? 'default' : 'ghost'}
+            size="sm"
+            className={`h-7 rounded-r-none text-xs ${viewMode === '2d' ? 'bg-zinc-600' : ''}`}
+            onClick={() => setViewMode('2d')}
+          >
+            2D
+          </Button>
+          <Button
+            variant={viewMode === '3d' ? 'default' : 'ghost'}
+            size="sm"
+            className={`h-7 rounded-l-none text-xs ${viewMode === '3d' ? 'bg-zinc-600' : ''}`}
+            onClick={() => setViewMode('3d')}
+          >
+            3D
+          </Button>
+        </div>
+      )}
+
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={!image && !modelUrl}
+            onClick={() => {
+              if (confirm('Start over? All measurements will be removed.')) {
+                clearAll();
+                resetCanvas();
+                setViewMode('2d');
+              }
+            }}
+          >
+            <FilePlus2 className="mr-1.5 h-4 w-4" />
+            New
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent>Remove image/model and start over</TooltipContent>
       </Tooltip>
 
       <Separator orientation="vertical" className="mx-1 h-6" />

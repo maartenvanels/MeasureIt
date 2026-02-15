@@ -1,4 +1,4 @@
-import { Measurement, Unit } from '@/types/measurement';
+import { Measurement, Measurement3D, Unit } from '@/types/measurement';
 
 const UNIT_TO_MM: Record<Unit, number> = {
   mm: 1,
@@ -57,4 +57,23 @@ export function calcRealArea(
     realArea = realArea * linearFactor * linearFactor;
   }
   return `${realArea.toFixed(2)} ${unit}\u00B2`;
+}
+
+export function calcReal3DDistance(
+  distance: number,
+  reference3D: Measurement3D | undefined,
+  refValue: number,
+  refUnit: Unit,
+  displayUnit?: Unit
+): string {
+  if (!reference3D || !refValue || refValue <= 0 || reference3D.distance <= 0) {
+    return distance.toFixed(2);
+  }
+  const ratio = refValue / reference3D.distance;
+  let realDist = distance * ratio;
+  const unit = displayUnit ?? refUnit;
+  if (displayUnit && displayUnit !== refUnit) {
+    realDist = convertUnit(realDist, refUnit, displayUnit);
+  }
+  return `${realDist.toFixed(2)} ${unit}`;
 }

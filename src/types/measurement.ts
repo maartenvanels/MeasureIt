@@ -1,10 +1,17 @@
-export type MeasurementType = 'reference' | 'measure' | 'angle' | 'area' | 'annotation';
-export type DrawMode = 'none' | 'reference' | 'measure' | 'angle' | 'area' | 'annotation';
+export type MeasurementType = 'reference' | 'measure' | 'angle' | 'area' | 'annotation' | 'reference3d' | 'measure3d';
+export type DrawMode = 'none' | 'reference' | 'measure' | 'angle' | 'area' | 'annotation' | 'reference3d' | 'measure3d';
+export type ViewMode = '2d' | '3d';
 export type Unit = 'mm' | 'cm' | 'm' | 'in' | 'px';
 
 export interface Point {
   x: number;
   y: number;
+}
+
+export interface Point3D {
+  x: number;
+  y: number;
+  z: number;
 }
 
 export interface Measurement {
@@ -63,7 +70,20 @@ export interface Annotation {
   arrowTarget?: Point;
 }
 
-export type AnyMeasurement = Measurement | AngleMeasurement | AreaMeasurement | Annotation;
+export interface Measurement3D {
+  id: string;
+  type: 'reference3d' | 'measure3d';
+  start: Point3D;
+  end: Point3D;
+  distance: number;
+  name: string;
+  createdAt: number;
+  color?: string;
+  unitOverride?: Unit;
+  fontSize?: number;
+}
+
+export type AnyMeasurement = Measurement | AngleMeasurement | AreaMeasurement | Annotation | Measurement3D;
 
 export interface LabelBounds {
   measurementId: string;

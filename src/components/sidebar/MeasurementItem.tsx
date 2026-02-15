@@ -2,10 +2,10 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { X, AArrowUp, AArrowDown, RotateCcw, MoveUpRight } from 'lucide-react';
-import { Annotation, Measurement, AreaMeasurement, AnyMeasurement } from '@/types/measurement';
+import { Annotation, Measurement, Measurement3D, AreaMeasurement, AnyMeasurement } from '@/types/measurement';
 import { useMeasurementStore } from '@/stores/useMeasurementStore';
 import { useUIStore } from '@/stores/useUIStore';
-import { calcRealDistance, calcRealArea } from '@/lib/calculations';
+import { calcRealDistance, calcRealArea, calcReal3DDistance } from '@/lib/calculations';
 import { ColorPicker } from './ColorPicker';
 import { getMeasurementColor } from '@/lib/canvas-rendering';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -29,7 +29,10 @@ export function MeasurementItem({ measurement: m }: MeasurementItemProps) {
   const referenceUnit = useMeasurementStore((s) => s.referenceUnit);
   const reference = useMeasurementStore((s) => s.getReference());
 
+  const reference3D = useMeasurementStore((s) => s.getReference3D());
+
   const isRef = m.type === 'reference';
+  const is3D = m.type === 'reference3d' || m.type === 'measure3d';
   const isAngle = m.type === 'angle';
   const isArea = m.type === 'area';
   const isAnnotation = m.type === 'annotation';
@@ -46,9 +49,13 @@ export function MeasurementItem({ measurement: m }: MeasurementItemProps) {
       ? (calcRealArea((m as AreaMeasurement).pixelArea, reference, referenceValue, referenceUnit, (m as AreaMeasurement).unitOverride) ?? `${(m as AreaMeasurement).pixelArea.toFixed(0)} px\u00B2`)
       : isAngle
         ? `${(m as any).angleDeg.toFixed(1)}\u00B0`
-        : m.type === 'reference'
-          ? `${referenceValue} ${referenceUnit}`
-          : (calcRealDistance((m as Measurement).pixelLength, reference, referenceValue, referenceUnit, (m as Measurement).unitOverride) ?? `${(m as Measurement).pixelLength.toFixed(1)} px`);
+        : is3D
+          ? (m.type === 'reference3d'
+            ? `${referenceValue} ${referenceUnit}`
+            : calcReal3DDistance((m as Measurement3D).distance, reference3D, referenceValue, referenceUnit, (m as Measurement3D).unitOverride))
+          : m.type === 'reference'
+            ? `${referenceValue} ${referenceUnit}`
+            : (calcRealDistance((m as Measurement).pixelLength, reference, referenceValue, referenceUnit, (m as Measurement).unitOverride) ?? `${(m as Measurement).pixelLength.toFixed(1)} px`);
 
   useEffect(() => {
     if (editing && inputRef.current) {
@@ -117,7 +124,7 @@ export function MeasurementItem({ measurement: m }: MeasurementItemProps) {
         {displayValue}
       </span>
 
-      {(m.type === 'measure' || m.type === 'area') && (
+      {(m.type === 'measure' || m.type === 'area' || m.type === 'measure3d') && (
         <Select
           value={(m as any).unitOverride ?? '__default__'}
           onValueChange={(val: string) =>

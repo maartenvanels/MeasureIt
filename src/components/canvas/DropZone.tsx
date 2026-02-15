@@ -29,13 +29,13 @@ export function DropZone({ containerRef }: { containerRef: RefObject<HTMLDivElem
       </div>
       <div className="text-center">
         <p className="text-lg font-medium text-zinc-400">
-          Drop an image here
+          Drop an image or 3D model here
         </p>
         <p className="mt-1 text-sm text-zinc-600">
           or click the <Upload className="inline h-3.5 w-3.5" /> button above
         </p>
         <p className="mt-2 text-xs text-zinc-700">
-          Supports paste from clipboard (Ctrl+V)
+          Images: paste from clipboard (Ctrl+V) &middot; 3D: .glb, .stl files
         </p>
       </div>
 

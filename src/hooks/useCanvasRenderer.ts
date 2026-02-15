@@ -92,8 +92,13 @@ export function useCanvasRenderer(
         if (m.type === 'reference') {
           return `${referenceValue} ${referenceUnit} (ref)`;
         }
-        return calcRealDistance(m.pixelLength, ref, referenceValue, referenceUnit, (m as Measurement).unitOverride) ??
-          `${m.pixelLength.toFixed(1)} px`;
+        // Skip 3D measurements in 2D canvas renderer
+        if (m.type === 'reference3d' || m.type === 'measure3d') {
+          return '';
+        }
+        const meas = m as Measurement;
+        return calcRealDistance(meas.pixelLength, ref, referenceValue, referenceUnit, meas.unitOverride) ??
+          `${meas.pixelLength.toFixed(1)} px`;
       };
 
       // Draw state for in-progress line

@@ -23,6 +23,7 @@ function getNameLabelPos(
   transform: ViewTransform
 ): { x: number; y: number } | null {
   if (m.type === 'annotation') return null;
+  if (m.type === 'reference3d' || m.type === 'measure3d') return null;
   if (!m.name) return null;
 
   let baseX: number;
@@ -48,10 +49,11 @@ function getNameLabelPos(
     baseX = screenPts.reduce((s, p) => s + p.x, 0) / screenPts.length;
     baseY = screenPts.reduce((s, p) => s + p.y, 0) / screenPts.length + 22;
   } else {
-    // reference or measure
+    // reference or measure (2D only — 3D types returned null above)
+    const meas = m as Measurement;
     const mid = imageToScreen(
-      (m.start.x + m.end.x) / 2,
-      (m.start.y + m.end.y) / 2,
+      (meas.start.x + meas.end.x) / 2,
+      (meas.start.y + meas.end.y) / 2,
       transform
     );
     baseX = mid.x;
@@ -59,7 +61,7 @@ function getNameLabelPos(
   }
 
   // Apply nameLabelOffset (image-space → screen-space)
-  const offset = m.nameLabelOffset;
+  const offset = (m as Measurement).nameLabelOffset;
   if (offset) {
     baseX += offset.x * transform.zoom;
     baseY += offset.y * transform.zoom;

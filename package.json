@@ -1,7 +1,12 @@
 {
   "name": "measure-it",
   "version": "0.1.0",
-  "private": true,
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/maartenvanels/MeasureIt.git"
+  },
+  "homepage": "https://measure-it-omega.vercel.app",
   "packageManager": "bun@1.3.5",
   "scripts": {
     "dev": "next dev --turbopack",
@@ -12,6 +17,8 @@
     "test:watch": "vitest"
   },
   "dependencies": {
+    "@react-three/drei": "^10.7.7",
+    "@react-three/fiber": "^9.5.0",
     "@vercel/analytics": "^1.6.1",
     "@vercel/speed-insights": "^1.3.1",
     "class-variance-authority": "^0.7.1",
@@ -28,6 +35,8 @@
     "remark-math": "^6.0.0",
     "sonner": "^2.0.7",
     "tailwind-merge": "^3.4.0",
+    "three": "^0.182.0",
+    "three-mesh-bvh": "^0.9.8",
     "zustand": "^5.0.11"
   },
   "optionalDependencies": {
@@ -40,6 +49,7 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "@types/three": "^0.182.0",
     "eslint": "^9",
     "eslint-config-next": "16.1.6",
     "lightningcss": "^1.31.1",

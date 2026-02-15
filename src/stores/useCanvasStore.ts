@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { Point, ViewTransform, AngleMeasurement, AreaMeasurement } from '@/types/measurement';
+import { Point, Point3D, ViewTransform, AngleMeasurement, AreaMeasurement, Measurement3D } from '@/types/measurement';
 import { pixelDist, snapToAxis, calcAngleDeg, calcPolygonArea } from '@/lib/geometry';
 
 interface CanvasState {
@@ -61,6 +61,21 @@ interface CanvasState {
   finishArea: () => AreaMeasurement | null;
   cancelArea: () => void;
 
+  // 3D model state
+  modelUrl: string | null;
+  modelFileName: string | null;
+  modelFileType: 'glb' | 'stl' | null;
+  isDrawing3D: boolean;
+  draw3DStart: Point3D | null;
+  draw3DCurrent: Point3D | null;
+
+  setModel: (url: string, fileName: string, fileType: 'glb' | 'stl') => void;
+  clearModel: () => void;
+  startDrawing3D: (point: Point3D) => void;
+  updateDrawing3D: (point: Point3D) => void;
+  finishDrawing3D: () => { start: Point3D; end: Point3D; distance: number } | null;
+  cancelDrawing3D: () => void;
+
   // Crop drawing state + actions
   cropStart: Point | null;
   cropCurrent: Point | null;
@@ -70,6 +85,7 @@ interface CanvasState {
   finishCropDraw: () => { x: number; y: number; w: number; h: number } | null;
   cancelCropDraw: () => void;
   applyCrop: (bounds: { x: number; y: number; w: number; h: number }) => void;
+  reset: () => void;
 }
 
 export const useCanvasStore = create<CanvasState>((set, get) => ({
@@ -97,6 +113,14 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
 
   // Polygon drawing
   areaPoints: [],
+
+  // 3D model
+  modelUrl: null,
+  modelFileName: null,
+  modelFileType: null,
+  isDrawing3D: false,
+  draw3DStart: null,
+  draw3DCurrent: null,
 
   // Crop drawing
   cropStart: null,
@@ -292,6 +316,31 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
   },
   cancelArea: () => set({ areaPoints: [] }),
 
+  // 3D model actions
+  setModel: (url, fileName, fileType) => set({ modelUrl: url, modelFileName: fileName, modelFileType: fileType }),
+  clearModel: () => {
+    const { modelUrl } = get();
+    if (modelUrl) URL.revokeObjectURL(modelUrl);
+    set({ modelUrl: null, modelFileName: null, modelFileType: null, isDrawing3D: false, draw3DStart: null, draw3DCurrent: null });
+  },
+  startDrawing3D: (point) => set({ isDrawing3D: true, draw3DStart: point, draw3DCurrent: point }),
+  updateDrawing3D: (point) => set({ draw3DCurrent: point }),
+  finishDrawing3D: () => {
+    const { draw3DStart, draw3DCurrent } = get();
+    if (!draw3DStart || !draw3DCurrent) {
+      set({ isDrawing3D: false, draw3DStart: null, draw3DCurrent: null });
+      return null;
+    }
+    const dx = draw3DCurrent.x - draw3DStart.x;
+    const dy = draw3DCurrent.y - draw3DStart.y;
+    const dz = draw3DCurrent.z - draw3DStart.z;
+    const distance = Math.sqrt(dx * dx + dy * dy + dz * dz);
+    set({ isDrawing3D: false, draw3DStart: null, draw3DCurrent: null });
+    if (distance < 0.0001) return null;
+    return { start: draw3DStart, end: draw3DCurrent, distance };
+  },
+  cancelDrawing3D: () => set({ isDrawing3D: false, draw3DStart: null, draw3DCurrent: null }),
+
   // Crop drawing
   startCropDraw: (pt) => set({ isCropping: true, cropStart: pt, cropCurrent: pt }),
   updateCropDraw: (pt) => set({ cropCurrent: pt }),
@@ -326,5 +375,36 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
       set({ image: newImg });
     };
     newImg.src = tempCanvas.toDataURL('image/png');
+  },
+  reset: () => {
+    const { modelUrl } = get();
+    if (modelUrl) URL.revokeObjectURL(modelUrl);
+    set({
+      image: null,
+      imageFileName: null,
+      blankCanvasSize: null,
+      transform: { panX: 0, panY: 0, zoom: 1 },
+      isDrawing: false,
+      drawStart: null,
+      drawCurrent: null,
+      isPanning: false,
+      panAnchor: null,
+      pinchStartDist: null,
+      pinchStartZoom: null,
+      snapPoint: null,
+      angleStep: null,
+      angleVertex: null,
+      angleArmA: null,
+      areaPoints: [],
+      modelUrl: null,
+      modelFileName: null,
+      modelFileType: null,
+      isDrawing3D: false,
+      draw3DStart: null,
+      draw3DCurrent: null,
+      cropStart: null,
+      cropCurrent: null,
+      isCropping: false,
+    });
   },
 }));

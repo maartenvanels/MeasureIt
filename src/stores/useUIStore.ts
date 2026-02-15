@@ -1,8 +1,9 @@
 import { create } from 'zustand';
-import { DrawMode, Point } from '@/types/measurement';
+import { DrawMode, Point, ViewMode } from '@/types/measurement';
 
 interface UIState {
   mode: DrawMode;
+  viewMode: ViewMode;
   selectedMeasurementId: string | null;
   sidebarOpen: boolean;
   sidebarWidth: number;
@@ -25,6 +26,7 @@ interface UIState {
   cropMode: boolean;
   cropBounds: { x: number; y: number; w: number; h: number } | null;
 
+  setViewMode: (viewMode: ViewMode) => void;
   setMode: (mode: DrawMode) => void;
   toggleMode: (mode: DrawMode) => void;
   selectMeasurement: (id: string | null) => void;
@@ -56,6 +58,7 @@ interface UIState {
 
 export const useUIStore = create<UIState>((set, get) => ({
   mode: 'none',
+  viewMode: '2d',
   selectedMeasurementId: null,
   sidebarOpen: true,
   sidebarWidth: (() => {
@@ -86,6 +89,7 @@ export const useUIStore = create<UIState>((set, get) => ({
   cropMode: false,
   cropBounds: null,
 
+  setViewMode: (viewMode) => set({ viewMode, mode: 'none' }),
   setMode: (mode) => set({ mode }),
   toggleMode: (mode) => set({ mode: get().mode === mode ? 'none' : mode }),
   selectMeasurement: (id) =>

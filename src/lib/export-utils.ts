@@ -1,27 +1,35 @@
-import { Measurement, AngleMeasurement, AreaMeasurement, Annotation, AnyMeasurement, Unit } from '@/types/measurement';
+import { Measurement, Measurement3D, AngleMeasurement, AreaMeasurement, Annotation, AnyMeasurement, Unit } from '@/types/measurement';
 import { calcRealValue } from './calculations';
 import { drawMeasurementLine, drawAngleMeasurement, drawAreaMeasurement, drawAnnotationLeader, drawLabel } from './canvas-rendering';
-import { calcRealDistance, calcRealArea } from './calculations';
+import { calcRealDistance, calcRealArea, calcReal3DDistance } from './calculations';
 import { hasLatex, renderNameLabelImage } from './latex-export';
 
 export function generateCSV(
   measurements: AnyMeasurement[],
   refValue: number,
   refUnit: Unit,
-  reference?: Measurement
+  reference?: Measurement,
+  reference3D?: Measurement3D
 ): string {
-  let csv = `Name,Type,Value,Unit,Pixel Length,Angle (deg),Pixel Area\n`;
+  let csv = `Name,Type,Value,Unit,Pixel Length,Angle (deg),Pixel Area,3D Distance\n`;
   for (const m of measurements) {
     if (m.type === 'annotation') {
       const content = (m as Annotation).content.replace(/"/g, '""').slice(0, 100);
-      csv += `"${content}",annotation,,,,, \n`;
+      csv += `"${content}",annotation,,,,,, \n`;
     } else if (m.type === 'area') {
       const area = m as AreaMeasurement;
       const unit = area.unitOverride ?? refUnit;
       const realArea = calcRealArea(area.pixelArea, reference, refValue, refUnit, area.unitOverride);
-      csv += `"${m.name}",area,"${realArea ?? ''}",${unit},,,"${area.pixelArea.toFixed(2)}"\n`;
+      csv += `"${m.name}",area,"${realArea ?? ''}",${unit},,,"${area.pixelArea.toFixed(2)}",\n`;
     } else if (m.type === 'angle') {
-      csv += `"${m.name}",angle,"${m.angleDeg.toFixed(2)}°",deg,,,\n`;
+      csv += `"${m.name}",angle,"${m.angleDeg.toFixed(2)}°",deg,,,,\n`;
+    } else if (m.type === 'reference3d' || m.type === 'measure3d') {
+      const m3d = m as Measurement3D;
+      const unit = m3d.unitOverride ?? refUnit;
+      const val = m.type === 'reference3d'
+        ? `${refValue}`
+        : calcReal3DDistance(m3d.distance, reference3D, refValue, refUnit, m3d.unitOverride).replace(` ${unit}`, '');
+      csv += `"${m.name}",${m.type},"${val}",${unit},,,,${m3d.distance.toFixed(4)}\n`;
     } else {
       const meas = m as Measurement;
       const unit = meas.unitOverride ?? refUnit;
@@ -29,7 +37,7 @@ export function generateCSV(
         m.type === 'reference'
           ? `${refValue}`
           : (calcRealDistance(meas.pixelLength, reference, refValue, refUnit, meas.unitOverride)?.replace(` ${unit}`, '') ?? '');
-      csv += `"${m.name}",${m.type},"${real}",${unit},${meas.pixelLength.toFixed(2)},,\n`;
+      csv += `"${m.name}",${m.type},"${real}",${unit},${meas.pixelLength.toFixed(2)},,,\n`;
     }
   }
   return csv;
@@ -39,7 +47,8 @@ export function generateJSON(
   measurements: AnyMeasurement[],
   refValue: number,
   refUnit: Unit,
-  reference?: Measurement
+  reference?: Measurement,
+  reference3D?: Measurement3D
 ): string {
   const data = measurements.map((m) => {
     if (m.type === 'annotation') {
@@ -50,6 +59,20 @@ export function generateJSON(
         position: { x: Math.round(ann.position.x), y: Math.round(ann.position.y) },
         color: ann.color,
         ...(ann.arrowTarget ? { arrowTarget: { x: Math.round(ann.arrowTarget.x), y: Math.round(ann.arrowTarget.y) } } : {}),
+      };
+    }
+    if (m.type === 'reference3d' || m.type === 'measure3d') {
+      const m3d = m as Measurement3D;
+      return {
+        name: m.name,
+        type: m.type,
+        distance: Math.round(m3d.distance * 10000) / 10000,
+        realValue: m.type === 'reference3d' ? refValue : (reference3D && refValue > 0 ? Math.round(m3d.distance * (refValue / reference3D.distance) * 100) / 100 : null),
+        unit: m3d.unitOverride ?? refUnit,
+        coordinates: {
+          start: { x: m3d.start.x, y: m3d.start.y, z: m3d.start.z },
+          end: { x: m3d.end.x, y: m3d.end.y, z: m3d.end.z },
+        },
       };
     }
     if (m.type === 'area') {
@@ -102,7 +125,8 @@ export function generateClipboardText(
   measurements: AnyMeasurement[],
   refValue: number,
   refUnit: Unit,
-  reference?: Measurement
+  reference?: Measurement,
+  reference3D?: Measurement3D
 ): string {
   let text = 'Measurements:\n';
   for (const m of measurements) {
@@ -115,6 +139,12 @@ export function generateClipboardText(
       text += `  ${m.name}: ${val}\n`;
     } else if (m.type === 'angle') {
       text += `  ${m.name}: ${m.angleDeg.toFixed(1)}\u00B0\n`;
+    } else if (m.type === 'reference3d' || m.type === 'measure3d') {
+      const m3d = m as Measurement3D;
+      const val = m.type === 'reference3d'
+        ? `${refValue} ${refUnit} (3D reference)`
+        : calcReal3DDistance(m3d.distance, reference3D, refValue, refUnit, m3d.unitOverride);
+      text += `  ${m.name || '3D'}: ${val}\n`;
     } else {
       const meas = m as Measurement;
       const val =
@@ -134,6 +164,7 @@ export function generateClipboardText(
  */
 function getExportNameLabelPos(m: AnyMeasurement): { x: number; y: number } | null {
   if (m.type === 'annotation' || !m.name) return null;
+  if (m.type === 'reference3d' || m.type === 'measure3d') return null;
 
   let x: number;
   let y: number;
@@ -156,14 +187,16 @@ function getExportNameLabelPos(m: AnyMeasurement): { x: number; y: number } | nu
     x = m.points.reduce((s, p) => s + p.x, 0) / m.points.length;
     y = m.points.reduce((s, p) => s + p.y, 0) / m.points.length + 22;
   } else {
-    x = (m.start.x + m.end.x) / 2;
-    y = (m.start.y + m.end.y) / 2 + 18;
+    const meas = m as Measurement;
+    x = (meas.start.x + meas.end.x) / 2;
+    y = (meas.start.y + meas.end.y) / 2 + 18;
   }
 
   // Apply nameLabelOffset (zoom=1 so direct)
-  if (m.nameLabelOffset) {
-    x += m.nameLabelOffset.x;
-    y += m.nameLabelOffset.y;
+  const nameLabelOffset = (m as Measurement).nameLabelOffset;
+  if (nameLabelOffset) {
+    x += nameLabelOffset.x;
+    y += nameLabelOffset.y;
   }
 
   return { x, y };
