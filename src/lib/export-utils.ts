@@ -1,7 +1,8 @@
-import { Measurement, AreaMeasurement, Annotation, AnyMeasurement, Unit } from '@/types/measurement';
+import { Measurement, AngleMeasurement, AreaMeasurement, Annotation, AnyMeasurement, Unit } from '@/types/measurement';
 import { calcRealValue } from './calculations';
 import { drawMeasurementLine, drawAngleMeasurement, drawAreaMeasurement, drawLabel } from './canvas-rendering';
 import { calcRealDistance, calcRealArea } from './calculations';
+import { hasLatex, renderNameLabelImage } from './latex-export';
 
 export function generateCSV(
   measurements: AnyMeasurement[],
@@ -126,6 +127,47 @@ export function generateClipboardText(
   return text;
 }
 
+/**
+ * Compute the position where a name label should be drawn for export.
+ * Transform is always {panX:0, panY:0, zoom:1} so image coords = screen coords.
+ */
+function getExportNameLabelPos(m: AnyMeasurement): { x: number; y: number } | null {
+  if (m.type === 'annotation' || !m.name) return null;
+
+  let x: number;
+  let y: number;
+
+  if (m.type === 'angle') {
+    const v = m.vertex;
+    const a = m.armA;
+    const b = m.armB;
+    const angleA = Math.atan2(a.y - v.y, a.x - v.x);
+    const angleB = Math.atan2(b.y - v.y, b.x - v.x);
+    let diff = angleB - angleA;
+    if (diff < 0) diff += Math.PI * 2;
+    let labelAngle = (angleA + angleB) / 2;
+    if (diff > Math.PI) labelAngle += Math.PI;
+    const arcRadius = Math.min(30, Math.max(15, 20)); // zoom=1
+    const labelDist = arcRadius + 18;
+    x = v.x + labelDist * Math.cos(labelAngle);
+    y = v.y + labelDist * Math.sin(labelAngle) + 22;
+  } else if (m.type === 'area') {
+    x = m.points.reduce((s, p) => s + p.x, 0) / m.points.length;
+    y = m.points.reduce((s, p) => s + p.y, 0) / m.points.length + 22;
+  } else {
+    x = (m.start.x + m.end.x) / 2;
+    y = (m.start.y + m.end.y) / 2 + 18;
+  }
+
+  // Apply nameLabelOffset (zoom=1 so direct)
+  if (m.nameLabelOffset) {
+    x += m.nameLabelOffset.x;
+    y += m.nameLabelOffset.y;
+  }
+
+  return { x, y };
+}
+
 export async function renderAnnotatedImage(
   image: HTMLImageElement,
   measurements: AnyMeasurement[],
@@ -142,6 +184,7 @@ export async function renderAnnotatedImage(
 
   const transform = { panX: 0, panY: 0, zoom: 1 };
 
+  // Draw all measurements with skipNameLabel=true (we render names separately)
   for (const m of measurements) {
     if (m.type === 'annotation') {
       const ann = m as Annotation;
@@ -153,9 +196,9 @@ export async function renderAnnotatedImage(
     } else if (m.type === 'area') {
       const area = m as AreaMeasurement;
       const label = calcRealArea(area.pixelArea, reference, refValue, refUnit, area.unitOverride) ?? `${area.pixelArea.toFixed(0)} px\u00B2`;
-      drawAreaMeasurement(ctx, area, false, transform, label);
+      drawAreaMeasurement(ctx, area, false, transform, label, undefined, true);
     } else if (m.type === 'angle') {
-      drawAngleMeasurement(ctx, m, false, transform);
+      drawAngleMeasurement(ctx, m, false, transform, undefined, true);
     } else {
       const meas = m as Measurement;
       const label =
@@ -163,7 +206,35 @@ export async function renderAnnotatedImage(
           ? `${refValue} ${refUnit} (ref)`
           : (calcRealDistance(meas.pixelLength, reference, refValue, refUnit, meas.unitOverride) ??
             `${meas.pixelLength.toFixed(1)} px`);
-      drawMeasurementLine(ctx, meas, false, transform, label, m.name);
+      drawMeasurementLine(ctx, meas, false, transform, label, m.name, undefined, true);
+    }
+  }
+
+  // Render name labels (with LaTeX support for names containing $...$)
+  const nameLabels = measurements
+    .filter((m): m is Measurement | AngleMeasurement | AreaMeasurement =>
+      m.type !== 'annotation' && !!m.name
+    );
+
+  for (const m of nameLabels) {
+    const pos = getExportNameLabelPos(m);
+    if (!pos) continue;
+
+    const fontSize = Math.max(9, (m.fontSize ?? 13) - 2);
+
+    if (hasLatex(m.name)) {
+      try {
+        const { img, width, height } = await renderNameLabelImage(
+          m.name, fontSize, '#71717a'
+        );
+        // drawImage at 2x rendered size → draw at original size
+        ctx.drawImage(img, pos.x - width / 2, pos.y - height / 2, width, height);
+      } catch {
+        // Fallback to plain text if LaTeX rendering fails
+        drawLabel(ctx, pos.x, pos.y, m.name, '#71717a', fontSize);
+      }
+    } else {
+      drawLabel(ctx, pos.x, pos.y, m.name, '#71717a', fontSize);
     }
   }
 
