@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { X, AArrowUp, AArrowDown, RotateCcw } from 'lucide-react';
+import { X, AArrowUp, AArrowDown, RotateCcw, MoveUpRight } from 'lucide-react';
 import { Annotation, Measurement, AreaMeasurement, AnyMeasurement } from '@/types/measurement';
 import { useMeasurementStore } from '@/stores/useMeasurementStore';
 import { useUIStore } from '@/stores/useUIStore';
@@ -138,44 +138,68 @@ export function MeasurementItem({ measurement: m }: MeasurementItemProps) {
         </Select>
       )}
 
-      {!isAnnotation && (
-        <div className="flex-shrink-0 flex items-center gap-0 opacity-0 group-hover:opacity-100 transition-opacity">
-          <button
-            className="rounded p-0.5 text-zinc-500 hover:text-zinc-200"
-            title="Decrease font size"
-            onClick={(e) => {
-              e.stopPropagation();
-              const current = (m as any).fontSize ?? 13;
-              if (current > 8) updateMeasurement(m.id, { fontSize: current - 1 });
-            }}
-          >
-            <AArrowDown className="h-3.5 w-3.5" />
-          </button>
-          <button
-            className="rounded p-0.5 text-zinc-500 hover:text-zinc-200"
-            title="Increase font size"
-            onClick={(e) => {
-              e.stopPropagation();
-              const current = (m as any).fontSize ?? 13;
-              if (current < 24) updateMeasurement(m.id, { fontSize: current + 1 });
-            }}
-          >
-            <AArrowUp className="h-3.5 w-3.5" />
-          </button>
-          {((m as any).labelOffset || (m as any).nameLabelOffset) && (
+      <div className="flex-shrink-0 flex items-center gap-0 opacity-0 group-hover:opacity-100 transition-opacity">
+        <button
+          className="rounded p-0.5 text-zinc-500 hover:text-zinc-200"
+          title="Decrease font size"
+          onClick={(e) => {
+            e.stopPropagation();
+            const current = (m as any).fontSize ?? (isAnnotation ? 14 : 13);
+            if (current > 8) updateMeasurement(m.id, { fontSize: current - 1 });
+          }}
+        >
+          <AArrowDown className="h-3.5 w-3.5" />
+        </button>
+        <button
+          className="rounded p-0.5 text-zinc-500 hover:text-zinc-200"
+          title="Increase font size"
+          onClick={(e) => {
+            e.stopPropagation();
+            const current = (m as any).fontSize ?? (isAnnotation ? 14 : 13);
+            if (current < 24) updateMeasurement(m.id, { fontSize: current + 1 });
+          }}
+        >
+          <AArrowUp className="h-3.5 w-3.5" />
+        </button>
+        {isAnnotation && (
+          <>
             <button
               className="rounded p-0.5 text-zinc-500 hover:text-zinc-200"
-              title="Reset label position"
+              title="Draw arrow to target"
               onClick={(e) => {
                 e.stopPropagation();
-                updateMeasurement(m.id, { labelOffset: undefined, nameLabelOffset: undefined });
+                useUIStore.getState().startArrowDraw(m.id);
               }}
             >
-              <RotateCcw className="h-3 w-3" />
+              <MoveUpRight className="h-3.5 w-3.5" />
             </button>
-          )}
-        </div>
-      )}
+            {(m as Annotation).arrowTarget && (
+              <button
+                className="rounded p-0.5 text-zinc-500 hover:text-zinc-200"
+                title="Remove arrow"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  updateMeasurement(m.id, { arrowTarget: undefined });
+                }}
+              >
+                <RotateCcw className="h-3 w-3" />
+              </button>
+            )}
+          </>
+        )}
+        {!isAnnotation && ((m as any).labelOffset || (m as any).nameLabelOffset) && (
+          <button
+            className="rounded p-0.5 text-zinc-500 hover:text-zinc-200"
+            title="Reset label position"
+            onClick={(e) => {
+              e.stopPropagation();
+              updateMeasurement(m.id, { labelOffset: undefined, nameLabelOffset: undefined });
+            }}
+          >
+            <RotateCcw className="h-3 w-3" />
+          </button>
+        )}
+      </div>
 
       <button
         className="flex-shrink-0 rounded p-0.5 text-zinc-600 opacity-0 transition-opacity hover:text-rose-400 group-hover:opacity-100"

@@ -14,6 +14,9 @@ interface UIState {
   pendingAnnotationPosition: Point | null;
   editingAnnotationId: string | null;
 
+  // Arrow draw for annotations
+  arrowDrawAnnotationId: string | null;
+
   // Crop mode
   cropMode: boolean;
   cropBounds: { x: number; y: number; w: number; h: number } | null;
@@ -31,6 +34,10 @@ interface UIState {
   startAnnotationPlacement: (position: Point) => void;
   openAnnotationEditor: (id: string) => void;
   closeAnnotationEditor: () => void;
+
+  // Arrow draw actions
+  startArrowDraw: (annotationId: string) => void;
+  cancelArrowDraw: () => void;
 
   // Crop actions
   setCropMode: (active: boolean) => void;
@@ -56,6 +63,8 @@ export const useUIStore = create<UIState>((set, get) => ({
   pendingAnnotationPosition: null,
   editingAnnotationId: null,
 
+  arrowDrawAnnotationId: null,
+
   cropMode: false,
   cropBounds: null,
 
@@ -79,6 +88,9 @@ export const useUIStore = create<UIState>((set, get) => ({
     set({ annotationEditorOpen: true, editingAnnotationId: id, pendingAnnotationPosition: null }),
   closeAnnotationEditor: () =>
     set({ annotationEditorOpen: false, pendingAnnotationPosition: null, editingAnnotationId: null }),
+
+  startArrowDraw: (annotationId) => set({ arrowDrawAnnotationId: annotationId, mode: 'none' }),
+  cancelArrowDraw: () => set({ arrowDrawAnnotationId: null }),
 
   setCropMode: (active) => set({ cropMode: active, cropBounds: null, mode: active ? 'none' : get().mode }),
   setCropBounds: (bounds) => set({ cropBounds: bounds }),

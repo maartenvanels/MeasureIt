@@ -149,7 +149,11 @@ export const useMeasurementStore = create<MeasurementState>((set, get) => ({
     const past = [...get().past, [...measurements]].slice(-50);
     const adjusted = measurements.map((m) => {
       if (m.type === 'annotation') {
-        return { ...m, position: { x: m.position.x + dx, y: m.position.y + dy } };
+        return {
+          ...m,
+          position: { x: m.position.x + dx, y: m.position.y + dy },
+          ...(m.arrowTarget ? { arrowTarget: { x: m.arrowTarget.x + dx, y: m.arrowTarget.y + dy } } : {}),
+        };
       }
       if (m.type === 'angle') {
         return {

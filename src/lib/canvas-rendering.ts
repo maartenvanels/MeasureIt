@@ -1,4 +1,4 @@
-import { Measurement, AngleMeasurement, AreaMeasurement, AnyMeasurement, ViewTransform, DrawMode, Point, LabelBounds } from '@/types/measurement';
+import { Measurement, AngleMeasurement, AreaMeasurement, Annotation, AnyMeasurement, ViewTransform, DrawMode, Point, LabelBounds } from '@/types/measurement';
 import { imageToScreen } from './geometry';
 
 export const DEFAULT_COLORS: Record<string, string> = {
@@ -104,6 +104,35 @@ export function drawEndMarker(
   ctx.beginPath();
   ctx.arc(x, y, 4, 0, Math.PI * 2);
   ctx.fill();
+}
+
+export function drawAnnotationLeader(
+  ctx: CanvasRenderingContext2D,
+  annotation: Annotation,
+  selected: boolean,
+  transform: ViewTransform
+) {
+  if (!annotation.arrowTarget) return;
+  const color = annotation.color ?? '#a855f7';
+  const from = imageToScreen(annotation.position.x, annotation.position.y, transform);
+  const to = imageToScreen(annotation.arrowTarget.x, annotation.arrowTarget.y, transform);
+
+  ctx.save();
+  ctx.globalAlpha = selected ? 1 : 0.85;
+
+  // Line
+  ctx.strokeStyle = color;
+  ctx.lineWidth = selected ? 2.5 : 1.5;
+  ctx.beginPath();
+  ctx.moveTo(from.x, from.y);
+  ctx.lineTo(to.x, to.y);
+  ctx.stroke();
+
+  // Arrowhead at target
+  const angle = Math.atan2(from.y - to.y, from.x - to.x);
+  drawEndMarker(ctx, to.x, to.y, angle, color);
+
+  ctx.restore();
 }
 
 export function renderImage(
@@ -522,7 +551,12 @@ export function renderOverlay(
   if (labelBoundsOut) labelBoundsOut.length = 0;
 
   for (const m of measurements) {
-    if (m.type === 'annotation') continue; // rendered as HTML overlay
+    if (m.type === 'annotation') {
+      if ((m as Annotation).arrowTarget) {
+        drawAnnotationLeader(ctx, m as Annotation, m.id === selectedId, transform);
+      }
+      continue; // text rendered as HTML overlay
+    }
     if (m.type === 'angle') {
       drawAngleMeasurement(ctx, m, m.id === selectedId, transform, labelBoundsOut, true);
     } else if (m.type === 'area') {

@@ -1,6 +1,6 @@
 import { Measurement, AngleMeasurement, AreaMeasurement, Annotation, AnyMeasurement, Unit } from '@/types/measurement';
 import { calcRealValue } from './calculations';
-import { drawMeasurementLine, drawAngleMeasurement, drawAreaMeasurement, drawLabel } from './canvas-rendering';
+import { drawMeasurementLine, drawAngleMeasurement, drawAreaMeasurement, drawAnnotationLeader, drawLabel } from './canvas-rendering';
 import { calcRealDistance, calcRealArea } from './calculations';
 import { hasLatex, renderNameLabelImage } from './latex-export';
 
@@ -49,6 +49,7 @@ export function generateJSON(
         content: ann.content,
         position: { x: Math.round(ann.position.x), y: Math.round(ann.position.y) },
         color: ann.color,
+        ...(ann.arrowTarget ? { arrowTarget: { x: Math.round(ann.arrowTarget.x), y: Math.round(ann.arrowTarget.y) } } : {}),
       };
     }
     if (m.type === 'area') {
@@ -189,9 +190,13 @@ export async function renderAnnotatedImage(
     if (m.type === 'annotation') {
       const ann = m as Annotation;
       const color = ann.color ?? '#a855f7';
+      const fontSize = ann.fontSize ?? 14;
       const plainText = ann.content.replace(/[#*_~`$\\]/g, '').trim().slice(0, 50);
+      if (ann.arrowTarget) {
+        drawAnnotationLeader(ctx, ann, false, transform);
+      }
       if (plainText) {
-        drawLabel(ctx, ann.position.x, ann.position.y, plainText, color, 14);
+        drawLabel(ctx, ann.position.x, ann.position.y, plainText, color, fontSize);
       }
     } else if (m.type === 'area') {
       const area = m as AreaMeasurement;

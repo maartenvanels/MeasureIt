@@ -59,6 +59,8 @@ export interface Annotation {
   name?: string;
   color?: string;
   createdAt: number;
+  fontSize?: number;
+  arrowTarget?: Point;
 }
 
 export type AnyMeasurement = Measurement | AngleMeasurement | AreaMeasurement | Annotation;

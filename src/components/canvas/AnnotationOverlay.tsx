@@ -97,12 +97,13 @@ export function AnnotationOverlay() {
             onPointerDown={(e) => handlePointerDown(e, m)}
           >
             <div
-              className={`max-w-xs rounded-md px-3 py-2 text-sm shadow-lg cursor-move ${
+              className={`max-w-xs rounded-md px-3 py-2 shadow-lg cursor-move ${
                 isSelected ? 'ring-2 ring-white/30' : ''
               }`}
               style={{
                 backgroundColor: 'rgba(9,9,11,0.9)',
                 borderLeft: `3px solid ${annotationColor}`,
+                fontSize: `${m.fontSize ?? 14}px`,
               }}
             >
               {m.content ? (
