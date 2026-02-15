@@ -75,11 +75,12 @@ function formatAxisDistances(start: Point3D, end: Point3D): string {
   return `\u0394x:${dx.toFixed(2)} \u0394y:${dy.toFixed(2)} \u0394z:${dz.toFixed(2)}`;
 }
 
-function MeasurementLine3D({ measurement, label, selected, markerSize }: {
+function MeasurementLine3D({ measurement, label, selected, markerSize, showAxis }: {
   measurement: Measurement3D;
   label: string;
   selected: boolean;
   markerSize: number;
+  showAxis: boolean;
 }) {
   const color = measurement.color ?? DEFAULT_COLORS[measurement.type] ?? '#06b6d4';
   const midpoint: [number, number, number] = [
@@ -113,9 +114,11 @@ function MeasurementLine3D({ measurement, label, selected, markerSize }: {
             {measurement.name && <span className="text-white mr-1">{measurement.name}</span>}
             {label}
           </div>
-          <div className="text-[10px] opacity-70 whitespace-nowrap">
-            {formatAxisDistances(measurement.start, measurement.end)}
-          </div>
+          {showAxis && (
+            <div className="text-[10px] opacity-70 whitespace-nowrap">
+              {formatAxisDistances(measurement.start, measurement.end)}
+            </div>
+          )}
         </div>
       </Html>
     </group>
@@ -220,9 +223,11 @@ function SceneContent() {
   const mode = useUIStore((s) => s.mode);
   const selectedId = useUIStore((s) => s.selectedMeasurementId);
   const selectMeasurement = useUIStore((s) => s.selectMeasurement);
+  const showAxisDistances = useUIStore((s) => s.show3DAxisDistances);
 
   const measurements = useMeasurementStore((s) => s.measurements);
   const addMeasurement3D = useMeasurementStore((s) => s.addMeasurement3D);
+  const getMeasure3DCount = useMeasurementStore((s) => s.getMeasure3DCount);
   const referenceValue = useMeasurementStore((s) => s.referenceValue);
   const referenceUnit = useMeasurementStore((s) => s.referenceUnit);
   const getReference3D = useMeasurementStore((s) => s.getReference3D);
@@ -266,13 +271,17 @@ function SceneContent() {
           const dz = draw3DCurrent.z - draw3DStart.z;
           const distance = Math.sqrt(dx * dx + dy * dy + dz * dz);
           if (distance >= 0.0001) {
+            const type = mode as 'reference3d' | 'measure3d';
+            const name = type === 'reference3d'
+              ? 'Reference 3D'
+              : `3D Measurement ${getMeasure3DCount() + 1}`;
             const m: Measurement3D = {
               id: crypto.randomUUID(),
-              type: mode as 'reference3d' | 'measure3d',
+              type,
               start: draw3DStart,
               end: draw3DCurrent,
               distance,
-              name: '',
+              name,
               createdAt: Date.now(),
             };
             addMeasurement3D(m);
@@ -384,6 +393,7 @@ function SceneContent() {
           label={getLabel(m)}
           selected={m.id === selectedId}
           markerSize={markerSize}
+          showAxis={showAxisDistances}
         />
       ))}
     </>
@@ -392,14 +402,32 @@ function SceneContent() {
 
 // ---- Main exported component ----
 
+function AxisDistanceToggle() {
+  const show = useUIStore((s) => s.show3DAxisDistances);
+  const toggle = useUIStore((s) => s.toggleShow3DAxisDistances);
+
+  return (
+    <button
+      onClick={toggle}
+      className={`absolute bottom-3 left-3 z-10 flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-mono transition-colors ${
+        show
+          ? 'bg-cyan-900/60 text-cyan-300 border border-cyan-700/50'
+          : 'bg-zinc-800/80 text-zinc-500 border border-zinc-700/50 hover:text-zinc-300'
+      }`}
+      title="Toggle axis distances (Δx, Δy, Δz)"
+    >
+      Δxyz
+    </button>
+  );
+}
+
 export default function ModelViewer() {
   return (
-    <div className="w-full h-full">
+    <div className="relative w-full h-full">
       <Canvas
         camera={{ position: [0, 0, 5], fov: 50 }}
         style={{ background: '#1a1a2e' }}
         onPointerMissed={() => {
-          // Cancel drawing if clicking outside model
           const { isDrawing3D } = useCanvasStore.getState();
           if (isDrawing3D) {
             useCanvasStore.getState().cancelDrawing3D();
@@ -408,6 +436,7 @@ export default function ModelViewer() {
       >
         <SceneContent />
       </Canvas>
+      <AxisDistanceToggle />
     </div>
   );
 }

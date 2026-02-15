@@ -26,6 +26,9 @@ interface UIState {
   cropMode: boolean;
   cropBounds: { x: number; y: number; w: number; h: number } | null;
 
+  // 3D display options
+  show3DAxisDistances: boolean;
+
   setViewMode: (viewMode: ViewMode) => void;
   setMode: (mode: DrawMode) => void;
   toggleMode: (mode: DrawMode) => void;
@@ -54,6 +57,9 @@ interface UIState {
   setCropMode: (active: boolean) => void;
   setCropBounds: (bounds: { x: number; y: number; w: number; h: number } | null) => void;
   cancelCrop: () => void;
+
+  // 3D display actions
+  toggleShow3DAxisDistances: () => void;
 }
 
 export const useUIStore = create<UIState>((set, get) => ({
@@ -88,6 +94,8 @@ export const useUIStore = create<UIState>((set, get) => ({
 
   cropMode: false,
   cropBounds: null,
+
+  show3DAxisDistances: false,
 
   setViewMode: (viewMode) => set({ viewMode, mode: 'none' }),
   setMode: (mode) => set({ mode }),
@@ -125,4 +133,6 @@ export const useUIStore = create<UIState>((set, get) => ({
   setCropMode: (active) => set({ cropMode: active, cropBounds: null, mode: active ? 'none' : get().mode }),
   setCropBounds: (bounds) => set({ cropBounds: bounds }),
   cancelCrop: () => set({ cropMode: false, cropBounds: null }),
+
+  toggleShow3DAxisDistances: () => set({ show3DAxisDistances: !get().show3DAxisDistances }),
 }));
