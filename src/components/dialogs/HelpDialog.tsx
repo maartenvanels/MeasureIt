@@ -19,13 +19,13 @@ export function HelpDialog() {
         <DialogHeader>
           <DialogTitle className="text-xl">How to use MeasureIt</DialogTitle>
         </DialogHeader>
-        <ol className="mt-2 space-y-3 text-sm text-zinc-300">
+        <ol className="mt-2 space-y-3 text-sm text-foreground/80">
           <li className="flex gap-3">
             <span className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-rose-600 text-xs font-bold text-white">
               1
             </span>
             <span>
-              <strong className="text-zinc-100">Load an image</strong> — drag &
+              <strong className="text-foreground">Load an image</strong> — drag &
               drop, use the button, or paste from clipboard (Ctrl+V)
             </span>
           </li>
@@ -34,7 +34,7 @@ export function HelpDialog() {
               2
             </span>
             <span>
-              <strong className="text-zinc-100">Draw a reference line</strong>{' '}
+              <strong className="text-foreground">Draw a reference line</strong>{' '}
               — click Reference (or press R), then draw a line over a known
               dimension in the image
             </span>
@@ -44,7 +44,7 @@ export function HelpDialog() {
               3
             </span>
             <span>
-              <strong className="text-zinc-100">Enter the real value</strong> —
+              <strong className="text-foreground">Enter the real value</strong> —
               type the actual measurement (e.g. 50 mm) in the toolbar
             </span>
           </li>
@@ -53,14 +53,14 @@ export function HelpDialog() {
               4
             </span>
             <span>
-              <strong className="text-zinc-100">Measure anything</strong> —
+              <strong className="text-foreground">Measure anything</strong> —
               click Measure (or press M), draw lines, and the real dimensions
               are calculated automatically!
             </span>
           </li>
         </ol>
-        <div className="mt-4 rounded-lg bg-zinc-900 p-3 text-xs text-zinc-500">
-          <strong className="text-zinc-400">Pro tips:</strong> Press A to measure
+        <div className="mt-4 rounded-lg bg-card p-3 text-xs text-muted-foreground">
+          <strong className="text-foreground">Pro tips:</strong> Press A to measure
           angles (click vertex, then two arm endpoints). Hold Shift for
           perfectly horizontal/vertical lines. Scroll to zoom. Middle-click to
           pan. Pinch to zoom on touch devices. Double-click a name to rename it.

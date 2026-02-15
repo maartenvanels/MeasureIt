@@ -165,18 +165,17 @@ export function AnnotationOverlay() {
                 if (el) boxRefs.current.set(m.id, el);
                 else boxRefs.current.delete(m.id);
               }}
-              className={`max-w-xs rounded-md px-3 py-2 shadow-lg cursor-move ${
+              className={`max-w-xs rounded-md px-3 py-2 shadow-lg cursor-move bg-popover/90 ${
                 isSelected ? 'ring-2 ring-white/30' : ''
               }`}
               style={{
-                backgroundColor: 'rgba(9,9,11,0.9)',
                 borderLeft: !arrowGoesRight ? `3px solid ${annotationColor}` : undefined,
                 borderRight: arrowGoesRight ? `3px solid ${annotationColor}` : undefined,
                 fontSize: `${m.fontSize ?? 14}px`,
               }}
             >
               {m.content ? (
-                <div className="annotation-content text-zinc-200 leading-relaxed" style={{ fontSize: 'inherit' }}>
+                <div className="annotation-content text-popover-foreground leading-relaxed" style={{ fontSize: 'inherit' }}>
                   <Markdown
                     remarkPlugins={[remarkMath]}
                     rehypePlugins={[rehypeKatex]}
@@ -185,7 +184,7 @@ export function AnnotationOverlay() {
                   </Markdown>
                 </div>
               ) : (
-                <span className="text-zinc-500 italic">Click to edit...</span>
+                <span className="text-muted-foreground italic">Click to edit...</span>
               )}
             </div>
           </div>

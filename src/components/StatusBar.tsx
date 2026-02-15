@@ -47,25 +47,25 @@ export function StatusBar() {
     drawStart && drawCurrent ? pixelDist(drawStart, drawCurrent).toFixed(1) : null;
 
   return (
-    <div className="flex items-center gap-6 border-t border-zinc-800 bg-zinc-950 px-4 py-1 text-[11px] text-zinc-500">
+    <div className="flex items-center gap-6 border-t border-border bg-background px-4 py-1 text-[11px] text-muted-foreground">
       <span>
         Mode:{' '}
-        <span className="text-zinc-400">{modeLabels[mode]}</span>
+        <span className="text-foreground">{modeLabels[mode]}</span>
       </span>
       <span>
         Position:{' '}
-        <span className="text-zinc-400">
+        <span className="text-foreground">
           {mousePos ? `${mousePos.x}, ${mousePos.y}` : '--'}
         </span>
       </span>
       <span>
         Zoom:{' '}
-        <span className="text-zinc-400">{Math.round(zoom * 100)}%</span>
+        <span className="text-foreground">{Math.round(zoom * 100)}%</span>
       </span>
       {pxDist && (
         <span>
           Distance:{' '}
-          <span className="text-zinc-400">{pxDist} px</span>
+          <span className="text-foreground">{pxDist} px</span>
         </span>
       )}
       <span className="ml-auto">

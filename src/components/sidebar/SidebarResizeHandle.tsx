@@ -38,7 +38,7 @@ export function SidebarResizeHandle() {
 
   return (
     <div
-      className="w-1 cursor-col-resize bg-zinc-800 hover:bg-zinc-600 active:bg-zinc-500 transition-colors flex-shrink-0"
+      className="w-1 cursor-col-resize bg-border hover:bg-muted-foreground active:bg-muted-foreground/80 transition-colors flex-shrink-0"
       onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}

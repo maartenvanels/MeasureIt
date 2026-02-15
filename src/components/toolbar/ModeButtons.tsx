@@ -167,7 +167,7 @@ export function ModeButtons() {
       )}
       {!is3D && (
         <>
-          <div className="mx-1 h-6 w-px bg-zinc-700" />
+          <div className="mx-1 h-6 w-px bg-border" />
           <Tooltip>
             <TooltipTrigger asChild>
               <Button
@@ -187,7 +187,7 @@ export function ModeButtons() {
       )}
       {!is3D && (
         <>
-          <div className="mx-1 h-6 w-px bg-zinc-700" />
+          <div className="mx-1 h-6 w-px bg-border" />
           <div className="flex items-center">
         <Tooltip>
           <TooltipTrigger asChild>
@@ -196,7 +196,7 @@ export function ModeButtons() {
               size="sm"
               onClick={toggleGrid}
               disabled={!image}
-              className={`rounded-r-none ${gridEnabled ? 'bg-zinc-500 hover:bg-zinc-600 text-white' : ''}`}
+              className={`rounded-r-none ${gridEnabled ? 'bg-muted hover:bg-accent text-white' : ''}`}
             >
               <Grid3x3 className="mr-1.5 h-4 w-4" />
               Grid
@@ -212,7 +212,7 @@ export function ModeButtons() {
                   variant={gridEnabled ? 'default' : 'outline'}
                   size="sm"
                   disabled={!image}
-                  className={`rounded-l-none border-l-0 px-1.5 ${gridEnabled ? 'bg-zinc-500 hover:bg-zinc-600 text-white' : ''}`}
+                  className={`rounded-l-none border-l-0 px-1.5 ${gridEnabled ? 'bg-muted hover:bg-accent text-white' : ''}`}
                 >
                   <ChevronDown className="h-3.5 w-3.5" />
                 </Button>

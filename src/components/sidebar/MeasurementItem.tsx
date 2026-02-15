@@ -78,7 +78,7 @@ export function MeasurementItem({ measurement: m }: MeasurementItemProps) {
     <div
       style={{ borderLeftColor: color }}
       className={`group flex items-center gap-2 rounded-md px-2.5 py-2 text-sm transition-colors cursor-pointer border-l-2 ${
-        isSelected ? 'bg-zinc-800' : 'hover:bg-zinc-800/50'
+        isSelected ? 'bg-accent' : 'hover:bg-accent/50'
       }`}
       onClick={() => selectMeasurement(m.id)}
     >
@@ -100,12 +100,12 @@ export function MeasurementItem({ measurement: m }: MeasurementItemProps) {
               setEditing(false);
             }
           }}
-          className="flex-1 bg-transparent text-sm text-zinc-200 outline-none"
+          className="flex-1 bg-transparent text-sm text-foreground outline-none"
           onClick={(e) => e.stopPropagation()}
         />
       ) : (
         <span
-          className="flex-1 truncate text-zinc-300"
+          className="flex-1 truncate text-foreground"
           onDoubleClick={(e) => {
             e.stopPropagation();
             if (isAnnotation) {
@@ -131,7 +131,7 @@ export function MeasurementItem({ measurement: m }: MeasurementItemProps) {
             updateMeasurement(m.id, { unitOverride: val === '__default__' ? undefined : val })
           }
         >
-          <SelectTrigger className="h-5 w-12 border-zinc-700 bg-zinc-800/50 px-1 text-[10px]" onClick={(e: React.MouseEvent) => e.stopPropagation()}>
+          <SelectTrigger className="h-5 w-12 border-border bg-accent/50 px-1 text-[10px]" onClick={(e: React.MouseEvent) => e.stopPropagation()}>
             <SelectValue placeholder={referenceUnit} />
           </SelectTrigger>
           <SelectContent>
@@ -147,7 +147,7 @@ export function MeasurementItem({ measurement: m }: MeasurementItemProps) {
 
       <div className="flex-shrink-0 flex items-center gap-0 opacity-0 group-hover:opacity-100 transition-opacity">
         <button
-          className="rounded p-0.5 text-zinc-500 hover:text-zinc-200"
+          className="rounded p-0.5 text-muted-foreground hover:text-foreground"
           title="Decrease font size"
           onClick={(e) => {
             e.stopPropagation();
@@ -158,7 +158,7 @@ export function MeasurementItem({ measurement: m }: MeasurementItemProps) {
           <AArrowDown className="h-3.5 w-3.5" />
         </button>
         <button
-          className="rounded p-0.5 text-zinc-500 hover:text-zinc-200"
+          className="rounded p-0.5 text-muted-foreground hover:text-foreground"
           title="Increase font size"
           onClick={(e) => {
             e.stopPropagation();
@@ -171,7 +171,7 @@ export function MeasurementItem({ measurement: m }: MeasurementItemProps) {
         {isAnnotation && (
           <>
             <button
-              className="rounded p-0.5 text-zinc-500 hover:text-zinc-200"
+              className="rounded p-0.5 text-muted-foreground hover:text-foreground"
               title="Draw arrow to target"
               onClick={(e) => {
                 e.stopPropagation();
@@ -182,7 +182,7 @@ export function MeasurementItem({ measurement: m }: MeasurementItemProps) {
             </button>
             {(m as Annotation).arrowTarget && (
               <button
-                className="rounded p-0.5 text-zinc-500 hover:text-zinc-200"
+                className="rounded p-0.5 text-muted-foreground hover:text-foreground"
                 title="Remove arrow"
                 onClick={(e) => {
                   e.stopPropagation();
@@ -196,7 +196,7 @@ export function MeasurementItem({ measurement: m }: MeasurementItemProps) {
         )}
         {!isAnnotation && ((m as any).labelOffset || (m as any).nameLabelOffset) && (
           <button
-            className="rounded p-0.5 text-zinc-500 hover:text-zinc-200"
+            className="rounded p-0.5 text-muted-foreground hover:text-foreground"
             title="Reset label position"
             onClick={(e) => {
               e.stopPropagation();
@@ -209,7 +209,7 @@ export function MeasurementItem({ measurement: m }: MeasurementItemProps) {
       </div>
 
       <button
-        className="flex-shrink-0 rounded p-0.5 text-zinc-600 opacity-0 transition-opacity hover:text-rose-400 group-hover:opacity-100"
+        className="flex-shrink-0 rounded p-0.5 text-muted-foreground/50 opacity-0 transition-opacity hover:text-rose-400 group-hover:opacity-100"
         onClick={(e) => {
           e.stopPropagation();
           removeMeasurement(m.id);

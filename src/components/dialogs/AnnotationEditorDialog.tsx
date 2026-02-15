@@ -88,10 +88,10 @@ export function AnnotationEditorDialog() {
 
   return (
     <Dialog open={annotationEditorOpen} onOpenChange={(open) => { if (!open) closeAnnotationEditor(); }}>
-      <DialogContent className="sm:max-w-lg bg-zinc-950 border-zinc-800">
+      <DialogContent className="sm:max-w-lg bg-background border-border">
         {/* Header with title and toggle */}
         <DialogHeader className="flex flex-row items-center justify-between space-y-0">
-          <DialogTitle className="text-zinc-100">
+          <DialogTitle className="text-foreground">
             {editingAnnotationId ? 'Edit Annotation' : 'New Annotation'}
           </DialogTitle>
           <div className="flex items-center gap-1">
@@ -99,8 +99,8 @@ export function AnnotationEditorDialog() {
               onClick={() => setEditorMode('raw')}
               className={`inline-flex items-center gap-1 px-2 py-1 text-xs rounded transition-colors ${
                 editorMode === 'raw'
-                  ? 'bg-zinc-700 text-zinc-100'
-                  : 'text-zinc-400 hover:text-zinc-200'
+                  ? 'bg-accent text-foreground'
+                  : 'text-muted-foreground hover:text-foreground'
               }`}
             >
               <Code className="h-3.5 w-3.5" />
@@ -110,8 +110,8 @@ export function AnnotationEditorDialog() {
               onClick={() => setEditorMode('preview')}
               className={`inline-flex items-center gap-1 px-2 py-1 text-xs rounded transition-colors ${
                 editorMode === 'preview'
-                  ? 'bg-zinc-700 text-zinc-100'
-                  : 'text-zinc-400 hover:text-zinc-200'
+                  ? 'bg-accent text-foreground'
+                  : 'text-muted-foreground hover:text-foreground'
               }`}
             >
               <Eye className="h-3.5 w-3.5" />
@@ -122,45 +122,45 @@ export function AnnotationEditorDialog() {
 
         {/* Mini toolbar (only in raw mode) */}
         {editorMode === 'raw' && (
-          <div className="flex items-center gap-1 border-b border-zinc-800 pb-2">
+          <div className="flex items-center gap-1 border-b border-border pb-2">
             <button
               onClick={() => insertAtCursor('**', '**')}
-              className="h-7 w-7 inline-flex items-center justify-center rounded text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800 transition-colors"
+              className="h-7 w-7 inline-flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
               title="Bold"
             >
               <Bold className="h-4 w-4" />
             </button>
             <button
               onClick={() => insertAtCursor('*', '*')}
-              className="h-7 w-7 inline-flex items-center justify-center rounded text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800 transition-colors"
+              className="h-7 w-7 inline-flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
               title="Italic"
             >
               <Italic className="h-4 w-4" />
             </button>
             <button
               onClick={() => insertAtCursor('## ', '')}
-              className="h-7 w-7 inline-flex items-center justify-center rounded text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800 transition-colors"
+              className="h-7 w-7 inline-flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
               title="Heading"
             >
               <Heading2 className="h-4 w-4" />
             </button>
             <button
               onClick={() => insertAtCursor('$', '$')}
-              className="h-7 w-7 inline-flex items-center justify-center rounded text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800 transition-colors"
+              className="h-7 w-7 inline-flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
               title="Inline math"
             >
               <Sigma className="h-4 w-4" />
             </button>
             <button
               onClick={() => insertAtCursor('\n$$\n', '\n$$\n')}
-              className="h-7 w-7 inline-flex items-center justify-center rounded text-xs font-mono text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800 transition-colors"
+              className="h-7 w-7 inline-flex items-center justify-center rounded text-xs font-mono text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
               title="Block math"
             >
               $$
             </button>
             <button
               onClick={() => insertAtCursor('[', '](url)')}
-              className="h-7 w-7 inline-flex items-center justify-center rounded text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800 transition-colors"
+              className="h-7 w-7 inline-flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
               title="Link"
             >
               <Link className="h-4 w-4" />
@@ -178,11 +178,11 @@ export function AnnotationEditorDialog() {
             ref={textareaRef}
             value={content}
             onChange={(e) => setContent(e.target.value)}
-            className="w-full min-h-[200px] bg-zinc-900 text-zinc-200 font-mono text-sm p-3 rounded border border-zinc-800 resize-none focus:outline-none focus:ring-1 focus:ring-violet-500 placeholder:text-zinc-600"
+            className="w-full min-h-[200px] bg-card text-foreground font-mono text-sm p-3 rounded border border-border resize-none focus:outline-none focus:ring-1 focus:ring-violet-500 placeholder:text-muted-foreground/50"
             placeholder="Write markdown here... supports **bold**, *italic*, $LaTeX$, and more."
           />
         ) : (
-          <div className="annotation-content prose prose-invert prose-sm max-w-none p-4 min-h-[200px] bg-zinc-900 rounded border border-zinc-800">
+          <div className="annotation-content prose prose-invert prose-sm max-w-none p-4 min-h-[200px] bg-card rounded border border-border dark:prose-invert">
             <Markdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>
               {content || '*No content yet*'}
             </Markdown>
@@ -193,7 +193,7 @@ export function AnnotationEditorDialog() {
         <DialogFooter className="flex flex-row justify-end gap-2 pt-2">
           <button
             onClick={closeAnnotationEditor}
-            className="px-3 py-1.5 text-sm rounded text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800 transition-colors"
+            className="px-3 py-1.5 text-sm rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
           >
             Cancel
           </button>

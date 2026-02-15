@@ -21,6 +21,7 @@ import { ModeButtons } from './ModeButtons';
 import { ReferenceInput } from './ReferenceInput';
 import { HistoryButtons } from './HistoryButtons';
 import { ExportMenu } from './ExportMenu';
+import { ThemeToggle } from '@/components/ThemeToggle';
 import { useUIStore } from '@/stores/useUIStore';
 import { useCanvasStore } from '@/stores/useCanvasStore';
 import { useMeasurementStore } from '@/stores/useMeasurementStore';
@@ -61,12 +62,12 @@ export function Toolbar() {
   };
 
   return (
-    <header className="flex items-center gap-3 border-b border-zinc-800 bg-zinc-900 px-4 py-2">
+    <header className="flex items-center gap-3 border-b border-border bg-card px-4 py-2">
       <div className="flex items-center gap-2">
         <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-rose-600 text-sm font-bold text-white">
           M
         </div>
-        <span className="text-base font-semibold text-zinc-100">
+        <span className="text-base font-semibold text-foreground">
           MeasureIt
         </span>
       </div>
@@ -103,11 +104,11 @@ export function Toolbar() {
 
       {/* View mode switcher — only show when both image and model are loaded */}
       {image && modelUrl && (
-        <div className="flex items-center rounded-md border border-zinc-700">
+        <div className="flex items-center rounded-md border border-border">
           <Button
             variant={viewMode === '2d' ? 'default' : 'ghost'}
             size="sm"
-            className={`h-7 rounded-r-none text-xs ${viewMode === '2d' ? 'bg-zinc-600' : ''}`}
+            className={`h-7 rounded-r-none text-xs ${viewMode === '2d' ? 'bg-muted' : ''}`}
             onClick={() => setViewMode('2d')}
           >
             2D
@@ -115,7 +116,7 @@ export function Toolbar() {
           <Button
             variant={viewMode === '3d' ? 'default' : 'ghost'}
             size="sm"
-            className={`h-7 rounded-l-none text-xs ${viewMode === '3d' ? 'bg-zinc-600' : ''}`}
+            className={`h-7 rounded-l-none text-xs ${viewMode === '3d' ? 'bg-muted' : ''}`}
             onClick={() => setViewMode('3d')}
           >
             3D
@@ -190,7 +191,7 @@ export function Toolbar() {
             <DropdownMenuSeparator />
             {projects.length === 0 ? (
               <DropdownMenuItem disabled>
-                <span className="text-zinc-500">No saved projects</span>
+                <span className="text-muted-foreground">No saved projects</span>
               </DropdownMenuItem>
             ) : (
               projects.map((p) => (
@@ -201,13 +202,13 @@ export function Toolbar() {
                 >
                   <div className="flex flex-col min-w-0 flex-1">
                     <span className="truncate text-sm">{p.name}</span>
-                    <span className="text-xs text-zinc-500">
+                    <span className="text-xs text-muted-foreground">
                       {p.measurements.length} items &middot;{' '}
                       {new Date(p.updatedAt).toLocaleDateString()}
                     </span>
                   </div>
                   <button
-                    className="ml-2 flex-shrink-0 rounded p-1 text-zinc-500 hover:text-rose-400"
+                    className="ml-2 flex-shrink-0 rounded p-1 text-muted-foreground hover:text-rose-400"
                     onClick={(e) => handleDelete(e, p.id)}
                   >
                     <Trash2 className="h-3.5 w-3.5" />
@@ -222,6 +223,8 @@ export function Toolbar() {
       <div className="flex-1" />
 
       <ExportMenu />
+
+      <ThemeToggle />
 
       <Tooltip>
         <TooltipTrigger asChild>

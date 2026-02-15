@@ -86,12 +86,12 @@ export function ToolGroupButton({
               <DropdownMenuItem
                 key={tool.mode}
                 onClick={() => onSelect(tool.mode)}
-                className={isCurrent ? 'bg-zinc-800' : ''}
+                className={isCurrent ? 'bg-accent' : ''}
               >
                 <ToolIcon className="mr-2 h-4 w-4" />
                 {tool.label}
                 {tool.shortcut && (
-                  <span className="ml-auto pl-4 text-xs text-zinc-500">{tool.shortcut}</span>
+                  <span className="ml-auto pl-4 text-xs text-muted-foreground">{tool.shortcut}</span>
                 )}
               </DropdownMenuItem>
             );

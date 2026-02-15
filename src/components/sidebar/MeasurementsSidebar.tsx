@@ -11,9 +11,9 @@ export function MeasurementsSidebar() {
   if (!sidebarOpen) return null;
 
   return (
-    <aside className="flex flex-col border-l border-zinc-800 bg-zinc-900 flex-shrink-0" style={{ width: sidebarWidth }}>
-      <div className="border-b border-zinc-800 px-4 py-3">
-        <h2 className="text-xs font-medium uppercase tracking-wider text-zinc-500">
+    <aside className="flex flex-col border-l border-border bg-card flex-shrink-0" style={{ width: sidebarWidth }}>
+      <div className="border-b border-border px-4 py-3">
+        <h2 className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
           Measurements
         </h2>
       </div>

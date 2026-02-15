@@ -5,6 +5,7 @@ import { AnimatedSection } from '@/components/landing/AnimatedSection';
 import { BlueprintGrid } from '@/components/landing/BlueprintGrid';
 import { DrawingLine } from '@/components/landing/DrawingLine';
 import HeroScene from '@/components/landing/HeroScene';
+import { ThemeToggle } from '@/components/ThemeToggle';
 
 const steps = [
   {
@@ -37,9 +38,9 @@ const features = [
 
 export default function LandingPage() {
   return (
-    <div className="min-h-screen bg-zinc-950 text-zinc-100">
+    <div className="min-h-screen bg-background text-foreground">
       {/* Nav */}
-      <nav className="border-b border-zinc-800/50 bg-zinc-950/80 backdrop-blur-sm sticky top-0 z-50">
+      <nav className="border-b border-border/50 bg-background/80 backdrop-blur-sm sticky top-0 z-50">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
           <div className="flex items-center gap-2.5">
             <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-rose-600 text-sm font-bold text-white">
@@ -47,11 +48,14 @@ export default function LandingPage() {
             </div>
             <span className="text-lg font-semibold">MeasureIt</span>
           </div>
-          <Link href="/app">
-            <Button size="sm" className="bg-rose-600 hover:bg-rose-700 text-white">
-              Open App
-            </Button>
-          </Link>
+          <div className="flex items-center gap-2">
+            <ThemeToggle />
+            <Link href="/app">
+              <Button size="sm" className="bg-rose-600 hover:bg-rose-700 text-white">
+                Open App
+              </Button>
+            </Link>
+          </div>
         </div>
       </nav>
 
@@ -65,7 +69,7 @@ export default function LandingPage() {
         <div className="absolute left-1/2 top-1/3 -z-10 h-[500px] w-[500px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-rose-600/10 blur-[120px] animate-glow-pulse" />
 
         <div className="relative z-10 mx-auto max-w-3xl">
-          <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-zinc-800 bg-zinc-900/80 px-4 py-1.5 text-sm text-zinc-400 backdrop-blur-sm">
+          <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-border bg-card/80 px-4 py-1.5 text-sm text-muted-foreground backdrop-blur-sm">
             <span className="relative flex h-2 w-2">
               <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
               <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
@@ -77,7 +81,7 @@ export default function LandingPage() {
             <br />
             <span className="text-rose-500">from a photo</span>
           </h1>
-          <p className="mt-6 text-lg leading-relaxed text-zinc-400 sm:text-xl">
+          <p className="mt-6 text-lg leading-relaxed text-muted-foreground sm:text-xl">
             Know one dimension? MeasureIt calculates the rest.
             Set a reference measurement on any image, then draw lines to get
             real-world dimensions instantly.
@@ -102,11 +106,11 @@ export default function LandingPage() {
       <DrawingLine />
 
       {/* How it works */}
-      <section className="border-t border-zinc-800/50 bg-zinc-900/30 py-24">
+      <section className="border-t border-border/50 bg-card/30 py-24">
         <div className="mx-auto max-w-6xl px-6">
           <AnimatedSection>
             <h2 className="text-center text-3xl font-bold">How it works</h2>
-            <p className="mx-auto mt-4 max-w-xl text-center text-zinc-400">
+            <p className="mx-auto mt-4 max-w-xl text-center text-muted-foreground">
               Three simple steps to measure anything in a photo
             </p>
           </AnimatedSection>
@@ -118,7 +122,7 @@ export default function LandingPage() {
                     {item.step}
                   </div>
                   <h3 className="mt-4 text-lg font-semibold">{item.title}</h3>
-                  <p className="mt-2 text-sm leading-relaxed text-zinc-400">{item.desc}</p>
+                  <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{item.desc}</p>
                 </div>
               </AnimatedSection>
             ))}
@@ -131,17 +135,17 @@ export default function LandingPage() {
         <div className="mx-auto max-w-6xl px-6">
           <AnimatedSection>
             <h2 className="text-center text-3xl font-bold">Features</h2>
-            <p className="mx-auto mt-4 max-w-xl text-center text-zinc-400">
+            <p className="mx-auto mt-4 max-w-xl text-center text-muted-foreground">
               A precision tool built for engineers, makers, and designers
             </p>
           </AnimatedSection>
           <div className="mt-16 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
             {features.map((feat, i) => (
               <AnimatedSection key={feat.title} delay={i * 80}>
-                <div className="rounded-xl border border-zinc-800 bg-zinc-900/50 p-5 transition-all duration-300 hover:border-rose-500/30 hover:bg-zinc-900/80 hover:shadow-[0_0_30px_-5px_rgba(225,29,72,0.15)] hover:-translate-y-1">
+                <div className="rounded-xl border border-border bg-card/50 p-5 transition-all duration-300 hover:border-rose-500/30 hover:bg-card/80 hover:shadow-[0_0_30px_-5px_rgba(225,29,72,0.15)] hover:-translate-y-1">
                   <feat.icon className="h-8 w-8 text-rose-500" />
                   <h3 className="mt-3 font-semibold">{feat.title}</h3>
-                  <p className="mt-1.5 text-sm leading-relaxed text-zinc-400">{feat.desc}</p>
+                  <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">{feat.desc}</p>
                 </div>
               </AnimatedSection>
             ))}
@@ -150,10 +154,10 @@ export default function LandingPage() {
       </section>
 
       {/* CTA */}
-      <section className="border-t border-zinc-800/50 bg-zinc-900/30 py-24 text-center">
+      <section className="border-t border-border/50 bg-card/30 py-24 text-center">
         <AnimatedSection className="mx-auto max-w-2xl px-6">
           <h2 className="text-3xl font-bold">Ready to measure?</h2>
-          <p className="mt-4 text-zinc-400">
+          <p className="mt-4 text-muted-foreground">
             No sign-up required. No data leaves your browser. Just open and start measuring.
           </p>
           <Link href="/app" className="mt-8 inline-block">
@@ -165,14 +169,14 @@ export default function LandingPage() {
       </section>
 
       {/* Footer */}
-      <footer className="border-t border-zinc-800/50 py-8">
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-6 text-sm text-zinc-500">
+      <footer className="border-t border-border/50 py-8">
+        <div className="mx-auto flex max-w-6xl items-center justify-between px-6 text-sm text-muted-foreground">
           <span>&copy; {new Date().getFullYear()} MeasureIt</span>
           <a
             href="https://github.com/maartenvanels/MeasureIt"
             target="_blank"
             rel="noopener noreferrer"
-            className="hover:text-zinc-300"
+            className="hover:text-foreground"
           >
             GitHub
           </a>

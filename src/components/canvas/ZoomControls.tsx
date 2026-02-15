@@ -31,7 +31,7 @@ export function ZoomControls({ containerRef }: ZoomControlsProps) {
   };
 
   return (
-    <div className="absolute bottom-3 right-3 flex items-center gap-1 rounded-lg border border-zinc-800 bg-zinc-900/90 p-1 backdrop-blur-sm">
+    <div className="absolute bottom-3 right-3 flex items-center gap-1 rounded-lg border border-border bg-card/90 p-1 backdrop-blur-sm">
       <Tooltip>
         <TooltipTrigger asChild>
           <Button
@@ -46,7 +46,7 @@ export function ZoomControls({ containerRef }: ZoomControlsProps) {
         <TooltipContent side="top">Zoom out</TooltipContent>
       </Tooltip>
 
-      <span className="min-w-[3rem] text-center text-xs tabular-nums text-zinc-400">
+      <span className="min-w-[3rem] text-center text-xs tabular-nums text-muted-foreground">
         {Math.round(zoom * 100)}%
       </span>
 
@@ -64,7 +64,7 @@ export function ZoomControls({ containerRef }: ZoomControlsProps) {
         <TooltipContent side="top">Zoom in</TooltipContent>
       </Tooltip>
 
-      <div className="mx-0.5 h-4 w-px bg-zinc-700" />
+      <div className="mx-0.5 h-4 w-px bg-border" />
 
       <Tooltip>
         <TooltipTrigger asChild>

@@ -14,7 +14,7 @@ export default function AppPage() {
   useKeyboardShortcuts();
 
   return (
-    <div className="flex h-screen flex-col overflow-hidden bg-zinc-950">
+    <div className="flex h-screen flex-col overflow-hidden bg-background">
       <Toolbar />
       <div className="flex flex-1 overflow-hidden">
         <CanvasContainer />

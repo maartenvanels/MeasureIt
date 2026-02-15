@@ -36,13 +36,13 @@ export function ColorPicker({ color, onChange }: ColorPickerProps) {
     <Popover open={open} onOpenChange={(o) => { setOpen(o); if (o) setHexInput(color); }}>
       <PopoverTrigger asChild>
         <button
-          className="w-3 h-3 rounded-full flex-shrink-0 border border-zinc-700 focus:outline-none"
+          className="w-3 h-3 rounded-full flex-shrink-0 border border-border focus:outline-none"
           style={{ backgroundColor: color }}
           onClick={(e) => e.stopPropagation()}
         />
       </PopoverTrigger>
       <PopoverContent
-        className="w-auto p-2 bg-zinc-900 border-zinc-800"
+        className="w-auto p-2 bg-popover border-border"
         align="start"
         sideOffset={6}
         onClick={(e) => e.stopPropagation()}
@@ -52,7 +52,7 @@ export function ColorPicker({ color, onChange }: ColorPickerProps) {
             <button
               key={preset}
               className={`w-6 h-6 rounded-full transition-all focus:outline-none ${
-                color === preset ? 'ring-2 ring-white ring-offset-1 ring-offset-zinc-900' : 'hover:scale-110'
+                color === preset ? 'ring-2 ring-white ring-offset-1 ring-offset-popover' : 'hover:scale-110'
               }`}
               style={{ backgroundColor: preset }}
               onClick={() => handlePresetClick(preset)}
@@ -67,7 +67,7 @@ export function ColorPicker({ color, onChange }: ColorPickerProps) {
             if (e.key === 'Enter') handleHexSubmit();
           }}
           onBlur={handleHexSubmit}
-          className="w-full px-1.5 py-1 text-xs font-mono bg-zinc-800 border border-zinc-700 rounded text-zinc-300 focus:outline-none focus:border-zinc-500"
+          className="w-full px-1.5 py-1 text-xs font-mono bg-accent border border-border rounded text-foreground focus:outline-none focus:border-ring"
           placeholder="#hex"
         />
       </PopoverContent>

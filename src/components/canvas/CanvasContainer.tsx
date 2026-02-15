@@ -126,7 +126,7 @@ export function CanvasContainer() {
   return (
     <div
       ref={containerRef}
-      className={`relative flex-1 overflow-hidden bg-zinc-950 ${cursorClass}`}
+      className={`relative flex-1 overflow-hidden bg-background ${cursorClass}`}
       onDragOver={handleDragOver}
       onDrop={handleDrop}
     >
@@ -151,7 +151,7 @@ export function CanvasContainer() {
       {/* 3D viewer */}
       {is3D && modelUrl && (
         <Suspense fallback={
-          <div className="absolute inset-0 flex items-center justify-center text-zinc-400">
+          <div className="absolute inset-0 flex items-center justify-center text-muted-foreground">
             Loading 3D viewer...
           </div>
         }>

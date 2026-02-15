@@ -9,7 +9,7 @@ export function MeasurementList() {
 
   if (measurements.length === 0) {
     return (
-      <div className="flex flex-1 items-center justify-center p-6 text-center text-sm text-zinc-600">
+      <div className="flex flex-1 items-center justify-center p-6 text-center text-sm text-muted-foreground/50">
         No measurements yet.
         <br />
         Draw a reference line to get started.
@@ -44,7 +44,7 @@ export function MeasurementList() {
           <MeasurementItem key={m.id} measurement={m} />
         ))}
         {refs3d.length > 0 && (
-          <div className="pt-2 pb-1 px-1 text-xs font-medium text-zinc-500 uppercase tracking-wider">3D Measurements</div>
+          <div className="pt-2 pb-1 px-1 text-xs font-medium text-muted-foreground uppercase tracking-wider">3D Measurements</div>
         )}
         {refs3d.map((m) => (
           <MeasurementItem key={m.id} measurement={m} />

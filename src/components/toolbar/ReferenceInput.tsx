@@ -26,8 +26,8 @@ export function ReferenceInput() {
   const setReferenceUnit = useMeasurementStore((s) => s.setReferenceUnit);
 
   return (
-    <div className="flex items-center gap-1.5 rounded-md border border-zinc-800 bg-zinc-900/50 px-2 py-1">
-      <span className="text-xs text-zinc-500">Ref:</span>
+    <div className="flex items-center gap-1.5 rounded-md border border-border bg-card/50 px-2 py-1">
+      <span className="text-xs text-muted-foreground">Ref:</span>
       <Input
         type="number"
         value={referenceValue}

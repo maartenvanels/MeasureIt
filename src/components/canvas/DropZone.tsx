@@ -23,18 +23,18 @@ export function DropZone({ containerRef }: { containerRef: RefObject<HTMLDivElem
   };
 
   return (
-    <div className="absolute inset-6 flex flex-col items-center justify-center gap-4 rounded-2xl border-2 border-dashed border-zinc-800 transition-colors hover:border-zinc-600">
-      <div className="rounded-full bg-zinc-900 p-6">
-        <ImageIcon className="h-12 w-12 text-zinc-600" />
+    <div className="absolute inset-6 flex flex-col items-center justify-center gap-4 rounded-2xl border-2 border-dashed border-border transition-colors hover:border-muted-foreground">
+      <div className="rounded-full bg-card p-6">
+        <ImageIcon className="h-12 w-12 text-muted-foreground/50" />
       </div>
       <div className="text-center">
-        <p className="text-lg font-medium text-zinc-400">
+        <p className="text-lg font-medium text-muted-foreground">
           Drop an image or 3D model here
         </p>
-        <p className="mt-1 text-sm text-zinc-600">
+        <p className="mt-1 text-sm text-muted-foreground/50">
           or click the <Upload className="inline h-3.5 w-3.5" /> button above
         </p>
-        <p className="mt-2 text-xs text-zinc-700">
+        <p className="mt-2 text-xs text-muted-foreground/30">
           Images: paste from clipboard (Ctrl+V) &middot; 3D: .glb, .stl files
         </p>
       </div>
@@ -42,7 +42,7 @@ export function DropZone({ containerRef }: { containerRef: RefObject<HTMLDivElem
       <div className="mt-2 flex flex-col items-center gap-2">
         {!showBlankForm ? (
           <button
-            className="flex items-center gap-1.5 rounded-md bg-zinc-800 px-3 py-1.5 text-sm text-zinc-400 transition-colors hover:bg-zinc-700 hover:text-zinc-200"
+            className="flex items-center gap-1.5 rounded-md bg-accent px-3 py-1.5 text-sm text-muted-foreground transition-colors hover:bg-accent/80 hover:text-foreground"
             onClick={() => setShowBlankForm(true)}
           >
             <PenLine className="h-3.5 w-3.5" />
@@ -56,21 +56,21 @@ export function DropZone({ containerRef }: { containerRef: RefObject<HTMLDivElem
               onChange={(e) => setWidth(Number(e.target.value))}
               min={100}
               max={8000}
-              className="w-20 rounded bg-zinc-800 px-2 py-1 text-sm text-zinc-300 outline-none focus:ring-1 focus:ring-zinc-600"
+              className="w-20 rounded bg-accent px-2 py-1 text-sm text-foreground outline-none focus:ring-1 focus:ring-ring"
               placeholder="Width"
             />
-            <span className="text-xs text-zinc-600">&times;</span>
+            <span className="text-xs text-muted-foreground/50">&times;</span>
             <input
               type="number"
               value={height}
               onChange={(e) => setHeight(Number(e.target.value))}
               min={100}
               max={8000}
-              className="w-20 rounded bg-zinc-800 px-2 py-1 text-sm text-zinc-300 outline-none focus:ring-1 focus:ring-zinc-600"
+              className="w-20 rounded bg-accent px-2 py-1 text-sm text-foreground outline-none focus:ring-1 focus:ring-ring"
               placeholder="Height"
             />
             <button
-              className="rounded bg-zinc-700 px-3 py-1 text-sm text-zinc-200 transition-colors hover:bg-zinc-600"
+              className="rounded bg-muted px-3 py-1 text-sm text-foreground transition-colors hover:bg-muted/80"
               onClick={handleCreateBlank}
             >
               Create

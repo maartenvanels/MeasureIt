@@ -22,10 +22,10 @@ export function SettingsDialog() {
         </DialogHeader>
         <div className="space-y-4 py-4">
           <div className="flex items-center justify-between">
-            <label className="text-sm text-zinc-300">Show Grid</label>
+            <label className="text-sm text-foreground">Show Grid</label>
             <button
               className={`relative h-5 w-9 rounded-full transition-colors ${
-                gridEnabled ? 'bg-cyan-600' : 'bg-zinc-700'
+                gridEnabled ? 'bg-cyan-600' : 'bg-muted'
               }`}
               onClick={() => useUIStore.getState().setGridEnabled(!gridEnabled)}
             >
@@ -37,17 +37,17 @@ export function SettingsDialog() {
             </button>
           </div>
           <div className="flex items-center justify-between">
-            <label className="text-sm text-zinc-300">Grid Spacing (px)</label>
+            <label className="text-sm text-foreground">Grid Spacing (px)</label>
             <input
               type="number"
               value={gridSpacing}
               min={5}
               max={500}
               onChange={(e) => useUIStore.getState().setGridSpacing(Number(e.target.value))}
-              className="w-20 rounded bg-zinc-800 px-2 py-1 text-sm text-zinc-300 outline-none focus:ring-1 focus:ring-zinc-600"
+              className="w-20 rounded bg-accent px-2 py-1 text-sm text-foreground outline-none focus:ring-1 focus:ring-ring"
             />
           </div>
-          <p className="text-xs text-zinc-600">
+          <p className="text-xs text-muted-foreground/50">
             Press G to toggle grid. Grid snaps when drawing or dragging.
           </p>
         </div>
