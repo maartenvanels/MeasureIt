@@ -1,12 +1,45 @@
 import Link from 'next/link';
 import { Ruler, Upload, MousePointer2, Download, Keyboard, Smartphone, TriangleRight, Save } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { AnimatedSection } from '@/components/landing/AnimatedSection';
+import { BlueprintGrid } from '@/components/landing/BlueprintGrid';
+import { DrawingLine } from '@/components/landing/DrawingLine';
+import HeroScene from '@/components/landing/HeroScene';
+
+const steps = [
+  {
+    step: '1',
+    title: 'Load an image',
+    desc: 'Drag & drop, paste from clipboard, or click to upload. Any image format works.',
+  },
+  {
+    step: '2',
+    title: 'Set a reference',
+    desc: 'Draw a line over a known dimension and enter its real-world measurement.',
+  },
+  {
+    step: '3',
+    title: 'Measure everything',
+    desc: 'Draw lines anywhere on the image. Real dimensions are calculated automatically.',
+  },
+];
+
+const features = [
+  { icon: Upload, title: 'Drag & Drop', desc: 'Load images instantly. Supports paste from clipboard.' },
+  { icon: Ruler, title: 'Reference Scaling', desc: 'Set one known measurement, calculate everything else.' },
+  { icon: TriangleRight, title: 'Angle Measurement', desc: 'Measure angles between any two lines.' },
+  { icon: MousePointer2, title: 'Zoom & Pan', desc: 'Scroll to zoom, middle-click to pan. Pixel-perfect precision.' },
+  { icon: Keyboard, title: 'Keyboard Shortcuts', desc: 'R for reference, M for measure, Ctrl+Z to undo.' },
+  { icon: Download, title: 'Export Anywhere', desc: 'CSV, JSON, clipboard, or annotated image export.' },
+  { icon: Smartphone, title: 'Touch Support', desc: 'Pinch to zoom, tap to measure. Works on mobile.' },
+  { icon: Save, title: 'Save Projects', desc: 'Save your work locally. Pick up where you left off.' },
+];
 
 export default function LandingPage() {
   return (
     <div className="min-h-screen bg-zinc-950 text-zinc-100">
       {/* Nav */}
-      <nav className="border-b border-zinc-800/50 bg-zinc-950/80 backdrop-blur-sm">
+      <nav className="border-b border-zinc-800/50 bg-zinc-950/80 backdrop-blur-sm sticky top-0 z-50">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
           <div className="flex items-center gap-2.5">
             <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-rose-600 text-sm font-bold text-white">
@@ -23,10 +56,20 @@ export default function LandingPage() {
       </nav>
 
       {/* Hero */}
-      <section className="mx-auto max-w-6xl px-6 py-24 text-center">
-        <div className="mx-auto max-w-3xl">
-          <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-zinc-800 bg-zinc-900 px-4 py-1.5 text-sm text-zinc-400">
-            <span className="h-2 w-2 rounded-full bg-emerald-500" />
+      <section className="relative mx-auto max-w-6xl px-6 py-24 text-center overflow-hidden">
+        {/* 3D scene behind text */}
+        <HeroScene />
+        {/* Blueprint grid pattern */}
+        <BlueprintGrid />
+        {/* Rose glow */}
+        <div className="absolute left-1/2 top-1/3 -z-10 h-[500px] w-[500px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-rose-600/10 blur-[120px] animate-glow-pulse" />
+
+        <div className="relative z-10 mx-auto max-w-3xl">
+          <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-zinc-800 bg-zinc-900/80 px-4 py-1.5 text-sm text-zinc-400 backdrop-blur-sm">
+            <span className="relative flex h-2 w-2">
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
+              <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
+            </span>
             Free &amp; open source
           </div>
           <h1 className="text-5xl font-bold leading-tight tracking-tight sm:text-6xl">
@@ -55,38 +98,29 @@ export default function LandingPage() {
         </div>
       </section>
 
+      {/* Drawing line divider */}
+      <DrawingLine />
+
       {/* How it works */}
       <section className="border-t border-zinc-800/50 bg-zinc-900/30 py-24">
         <div className="mx-auto max-w-6xl px-6">
-          <h2 className="text-center text-3xl font-bold">How it works</h2>
-          <p className="mx-auto mt-4 max-w-xl text-center text-zinc-400">
-            Three simple steps to measure anything in a photo
-          </p>
+          <AnimatedSection>
+            <h2 className="text-center text-3xl font-bold">How it works</h2>
+            <p className="mx-auto mt-4 max-w-xl text-center text-zinc-400">
+              Three simple steps to measure anything in a photo
+            </p>
+          </AnimatedSection>
           <div className="mt-16 grid gap-8 sm:grid-cols-3">
-            {[
-              {
-                step: '1',
-                title: 'Load an image',
-                desc: 'Drag & drop, paste from clipboard, or click to upload. Any image format works.',
-              },
-              {
-                step: '2',
-                title: 'Set a reference',
-                desc: 'Draw a line over a known dimension and enter its real-world measurement.',
-              },
-              {
-                step: '3',
-                title: 'Measure everything',
-                desc: 'Draw lines anywhere on the image. Real dimensions are calculated automatically.',
-              },
-            ].map((item) => (
-              <div key={item.step} className="text-center">
-                <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-rose-600/10 text-2xl font-bold text-rose-500">
-                  {item.step}
+            {steps.map((item, i) => (
+              <AnimatedSection key={item.step} delay={i * 150}>
+                <div className="text-center">
+                  <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-rose-600/10 text-2xl font-bold text-rose-500">
+                    {item.step}
+                  </div>
+                  <h3 className="mt-4 text-lg font-semibold">{item.title}</h3>
+                  <p className="mt-2 text-sm leading-relaxed text-zinc-400">{item.desc}</p>
                 </div>
-                <h3 className="mt-4 text-lg font-semibold">{item.title}</h3>
-                <p className="mt-2 text-sm leading-relaxed text-zinc-400">{item.desc}</p>
-              </div>
+              </AnimatedSection>
             ))}
           </div>
         </div>
@@ -95,26 +129,21 @@ export default function LandingPage() {
       {/* Features */}
       <section className="py-24">
         <div className="mx-auto max-w-6xl px-6">
-          <h2 className="text-center text-3xl font-bold">Features</h2>
-          <p className="mx-auto mt-4 max-w-xl text-center text-zinc-400">
-            A precision tool built for engineers, makers, and designers
-          </p>
+          <AnimatedSection>
+            <h2 className="text-center text-3xl font-bold">Features</h2>
+            <p className="mx-auto mt-4 max-w-xl text-center text-zinc-400">
+              A precision tool built for engineers, makers, and designers
+            </p>
+          </AnimatedSection>
           <div className="mt-16 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-            {[
-              { icon: Upload, title: 'Drag & Drop', desc: 'Load images instantly. Supports paste from clipboard.' },
-              { icon: Ruler, title: 'Reference Scaling', desc: 'Set one known measurement, calculate everything else.' },
-              { icon: TriangleRight, title: 'Angle Measurement', desc: 'Measure angles between any two lines.' },
-              { icon: MousePointer2, title: 'Zoom & Pan', desc: 'Scroll to zoom, middle-click to pan. Pixel-perfect precision.' },
-              { icon: Keyboard, title: 'Keyboard Shortcuts', desc: 'R for reference, M for measure, Ctrl+Z to undo.' },
-              { icon: Download, title: 'Export Anywhere', desc: 'CSV, JSON, clipboard, or annotated image export.' },
-              { icon: Smartphone, title: 'Touch Support', desc: 'Pinch to zoom, tap to measure. Works on mobile.' },
-              { icon: Save, title: 'Save Projects', desc: 'Save your work locally. Pick up where you left off.' },
-            ].map((feat) => (
-              <div key={feat.title} className="rounded-xl border border-zinc-800 bg-zinc-900/50 p-5">
-                <feat.icon className="h-8 w-8 text-rose-500" />
-                <h3 className="mt-3 font-semibold">{feat.title}</h3>
-                <p className="mt-1.5 text-sm leading-relaxed text-zinc-400">{feat.desc}</p>
-              </div>
+            {features.map((feat, i) => (
+              <AnimatedSection key={feat.title} delay={i * 80}>
+                <div className="rounded-xl border border-zinc-800 bg-zinc-900/50 p-5 transition-all duration-300 hover:border-rose-500/30 hover:bg-zinc-900/80 hover:shadow-[0_0_30px_-5px_rgba(225,29,72,0.15)] hover:-translate-y-1">
+                  <feat.icon className="h-8 w-8 text-rose-500" />
+                  <h3 className="mt-3 font-semibold">{feat.title}</h3>
+                  <p className="mt-1.5 text-sm leading-relaxed text-zinc-400">{feat.desc}</p>
+                </div>
+              </AnimatedSection>
             ))}
           </div>
         </div>
@@ -122,7 +151,7 @@ export default function LandingPage() {
 
       {/* CTA */}
       <section className="border-t border-zinc-800/50 bg-zinc-900/30 py-24 text-center">
-        <div className="mx-auto max-w-2xl px-6">
+        <AnimatedSection className="mx-auto max-w-2xl px-6">
           <h2 className="text-3xl font-bold">Ready to measure?</h2>
           <p className="mt-4 text-zinc-400">
             No sign-up required. No data leaves your browser. Just open and start measuring.
@@ -132,7 +161,7 @@ export default function LandingPage() {
               Open MeasureIt
             </Button>
           </Link>
-        </div>
+        </AnimatedSection>
       </section>
 
       {/* Footer */}
