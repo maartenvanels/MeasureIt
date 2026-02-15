@@ -15,7 +15,14 @@ import { calcReal3DDistance } from '@/lib/calculations';
 
 // ---- Model mesh components ----
 
-function STLModel({ url, onPointerDown }: { url: string; onPointerDown: (e: ThreeEvent<PointerEvent>) => void }) {
+interface ModelProps {
+  url: string;
+  onPointerDown: (e: ThreeEvent<PointerEvent>) => void;
+  onPointerMove: (e: ThreeEvent<PointerEvent>) => void;
+  onPointerLeave: () => void;
+}
+
+function STLModel({ url, onPointerDown, onPointerMove, onPointerLeave }: ModelProps) {
   const geometry = useLoader(STLLoader, url);
   const material = useMemo(() => new THREE.MeshStandardMaterial({ color: '#8899aa', roughness: 0.5, metalness: 0.3 }), []);
 
@@ -25,28 +32,35 @@ function STLModel({ url, onPointerDown }: { url: string; onPointerDown: (e: Thre
         geometry={geometry}
         material={material}
         onPointerDown={onPointerDown}
+        onPointerMove={onPointerMove}
+        onPointerLeave={onPointerLeave}
       />
     </Center>
   );
 }
 
-function GLBModel({ url, onPointerDown }: { url: string; onPointerDown: (e: ThreeEvent<PointerEvent>) => void }) {
+function GLBModel({ url, onPointerDown, onPointerMove, onPointerLeave }: ModelProps) {
   const gltf = useLoader(GLTFLoader, url);
   const scene = useMemo(() => gltf.scene.clone(), [gltf]);
 
   return (
     <Center>
-      <primitive object={scene} onPointerDown={onPointerDown} />
+      <primitive
+        object={scene}
+        onPointerDown={onPointerDown}
+        onPointerMove={onPointerMove}
+        onPointerLeave={onPointerLeave}
+      />
     </Center>
   );
 }
 
 // ---- Measurement markers ----
 
-function MeasurementPoint({ position, color }: { position: Point3D; color: string }) {
+function MeasurementPoint({ position, color, scale = 0.02 }: { position: Point3D; color: string; scale?: number }) {
   return (
     <mesh position={[position.x, position.y, position.z]}>
-      <sphereGeometry args={[0.02, 16, 16]} />
+      <sphereGeometry args={[scale, 16, 16]} />
       <meshBasicMaterial color={color} />
     </mesh>
   );
@@ -54,10 +68,18 @@ function MeasurementPoint({ position, color }: { position: Point3D; color: strin
 
 // ---- Measurement line with label ----
 
-function MeasurementLine3D({ measurement, label, selected }: {
+function formatAxisDistances(start: Point3D, end: Point3D): string {
+  const dx = Math.abs(end.x - start.x);
+  const dy = Math.abs(end.y - start.y);
+  const dz = Math.abs(end.z - start.z);
+  return `\u0394x:${dx.toFixed(2)} \u0394y:${dy.toFixed(2)} \u0394z:${dz.toFixed(2)}`;
+}
+
+function MeasurementLine3D({ measurement, label, selected, markerSize }: {
   measurement: Measurement3D;
   label: string;
   selected: boolean;
+  markerSize: number;
 }) {
   const color = measurement.color ?? DEFAULT_COLORS[measurement.type] ?? '#06b6d4';
   const midpoint: [number, number, number] = [
@@ -76,19 +98,24 @@ function MeasurementLine3D({ measurement, label, selected }: {
         color={color}
         lineWidth={selected ? 3 : 2}
       />
-      <MeasurementPoint position={measurement.start} color={color} />
-      <MeasurementPoint position={measurement.end} color={color} />
+      <MeasurementPoint position={measurement.start} color={color} scale={markerSize} />
+      <MeasurementPoint position={measurement.end} color={color} scale={markerSize} />
       <Html position={midpoint} center style={{ pointerEvents: 'none' }}>
         <div
-          className="px-2 py-0.5 rounded text-xs font-mono whitespace-nowrap"
+          className="flex flex-col items-center rounded px-2 py-1 font-mono"
           style={{
-            backgroundColor: 'rgba(0,0,0,0.8)',
+            backgroundColor: 'rgba(0,0,0,0.85)',
             color: color,
             border: selected ? `2px solid ${color}` : '1px solid rgba(255,255,255,0.2)',
           }}
         >
-          {measurement.name && <span className="text-white mr-1">{measurement.name}</span>}
-          {label}
+          <div className="text-xs whitespace-nowrap">
+            {measurement.name && <span className="text-white mr-1">{measurement.name}</span>}
+            {label}
+          </div>
+          <div className="text-[10px] opacity-70 whitespace-nowrap">
+            {formatAxisDistances(measurement.start, measurement.end)}
+          </div>
         </div>
       </Html>
     </group>
@@ -97,7 +124,9 @@ function MeasurementLine3D({ measurement, label, selected }: {
 
 // ---- In-progress drawing preview ----
 
-function DrawPreview({ start, current }: { start: Point3D; current: Point3D }) {
+function DrawPreview({ start, current, markerSize, dashSize, gapSize }: {
+  start: Point3D; current: Point3D; markerSize: number; dashSize: number; gapSize: number;
+}) {
   const midpoint: [number, number, number] = [
     (start.x + current.x) / 2,
     (start.y + current.y) / 2,
@@ -118,14 +147,17 @@ function DrawPreview({ start, current }: { start: Point3D; current: Point3D }) {
         color="#ffffff"
         lineWidth={1.5}
         dashed
-        dashSize={0.05}
-        gapSize={0.03}
+        dashSize={dashSize}
+        gapSize={gapSize}
       />
-      <MeasurementPoint position={start} color="#ffffff" />
-      <MeasurementPoint position={current} color="#ffffff" />
+      <MeasurementPoint position={start} color="#ffffff" scale={markerSize} />
+      <MeasurementPoint position={current} color="#ffffff" scale={markerSize} />
       <Html position={midpoint} center style={{ pointerEvents: 'none' }}>
-        <div className="px-2 py-0.5 rounded text-xs font-mono whitespace-nowrap bg-black/80 text-white border border-white/20">
-          {dist.toFixed(2)}
+        <div className="flex flex-col items-center rounded px-2 py-1 font-mono bg-black/80 text-white border border-white/20">
+          <div className="text-xs whitespace-nowrap">{dist.toFixed(4)}</div>
+          <div className="text-[10px] opacity-70 whitespace-nowrap">
+            {formatAxisDistances(start, current)}
+          </div>
         </div>
       </Html>
     </group>
@@ -134,7 +166,7 @@ function DrawPreview({ start, current }: { start: Point3D; current: Point3D }) {
 
 // ---- Auto-fit camera on model load ----
 
-function CameraFitter({ children }: { children: React.ReactNode }) {
+function CameraFitter({ children, onModelScale }: { children: React.ReactNode; onModelScale?: (scale: number) => void }) {
   const groupRef = useRef<THREE.Group>(null);
   const { camera } = useThree();
   const [fitted, setFitted] = useState(false);
@@ -156,18 +188,19 @@ function CameraFitter({ children }: { children: React.ReactNode }) {
       camera.far = maxDim * 100;
       camera.updateProjectionMatrix();
     }
+    onModelScale?.(maxDim);
     setFitted(true);
-  }, [camera, fitted]);
+  }, [camera, fitted, onModelScale]);
 
   return <group ref={groupRef}>{children}</group>;
 }
 
 // ---- Hover indicator ----
 
-function HoverIndicator({ point }: { point: Point3D }) {
+function HoverIndicator({ point, scale = 0.03 }: { point: Point3D; scale?: number }) {
   return (
     <mesh position={[point.x, point.y, point.z]}>
-      <sphereGeometry args={[0.03, 16, 16]} />
+      <sphereGeometry args={[scale, 16, 16]} />
       <meshBasicMaterial color="#00ffff" transparent opacity={0.8} />
     </mesh>
   );
@@ -195,9 +228,16 @@ function SceneContent() {
   const getReference3D = useMeasurementStore((s) => s.getReference3D);
 
   const [hoverPoint, setHoverPoint] = useState<Point3D | null>(null);
+  const [modelScale, setModelScale] = useState(1);
   const orbitRef = useRef<any>(null);
 
   const isMeasuring = mode === 'reference3d' || mode === 'measure3d';
+
+  // Sphere size relative to model (about 0.5% of max dimension)
+  const markerSize = modelScale * 0.005;
+  const hoverSize = markerSize * 1.5;
+  const dashSize = modelScale * 0.02;
+  const gapSize = modelScale * 0.012;
 
   // Filter 3D measurements
   const measurements3D = useMemo(
@@ -216,23 +256,32 @@ function SceneContent() {
         // First click: start
         startDrawing3D(point);
       } else {
-        // Second click: finish
-        const result = finishDrawing3D();
-        if (result) {
-          const m: Measurement3D = {
-            id: crypto.randomUUID(),
-            type: mode as 'reference3d' | 'measure3d',
-            start: result.start,
-            end: result.end,
-            distance: result.distance,
-            name: '',
-            createdAt: Date.now(),
-          };
-          addMeasurement3D(m);
+        // Second click: update end point, then finish
+        useCanvasStore.getState().updateDrawing3D(point);
+        // Read fresh state after update
+        const { draw3DStart, draw3DCurrent } = useCanvasStore.getState();
+        if (draw3DStart && draw3DCurrent) {
+          const dx = draw3DCurrent.x - draw3DStart.x;
+          const dy = draw3DCurrent.y - draw3DStart.y;
+          const dz = draw3DCurrent.z - draw3DStart.z;
+          const distance = Math.sqrt(dx * dx + dy * dy + dz * dz);
+          if (distance >= 0.0001) {
+            const m: Measurement3D = {
+              id: crypto.randomUUID(),
+              type: mode as 'reference3d' | 'measure3d',
+              start: draw3DStart,
+              end: draw3DCurrent,
+              distance,
+              name: '',
+              createdAt: Date.now(),
+            };
+            addMeasurement3D(m);
+          }
         }
+        useCanvasStore.getState().cancelDrawing3D();
       }
     },
-    [isMeasuring, isDrawing3D, mode, startDrawing3D, finishDrawing3D, addMeasurement3D]
+    [isMeasuring, isDrawing3D, mode, startDrawing3D, addMeasurement3D]
   );
 
   const handlePointerMove = useCallback(
@@ -292,16 +341,20 @@ function SceneContent() {
       />
 
       <Bvh firstHitOnly>
-        <CameraFitter>
+        <CameraFitter onModelScale={setModelScale}>
           {modelFileType === 'stl' ? (
             <STLModel
               url={modelUrl}
               onPointerDown={handlePointerDown}
+              onPointerMove={handlePointerMove}
+              onPointerLeave={handlePointerLeave}
             />
           ) : (
             <GLBModel
               url={modelUrl}
               onPointerDown={handlePointerDown}
+              onPointerMove={handlePointerMove}
+              onPointerLeave={handlePointerLeave}
             />
           )}
         </CameraFitter>
@@ -316,11 +369,11 @@ function SceneContent() {
       </mesh>
 
       {/* Hover indicator */}
-      {hoverPoint && isMeasuring && <HoverIndicator point={hoverPoint} />}
+      {hoverPoint && isMeasuring && <HoverIndicator point={hoverPoint} scale={hoverSize} />}
 
       {/* In-progress drawing */}
       {isDrawing3D && draw3DStart && draw3DCurrent && (
-        <DrawPreview start={draw3DStart} current={draw3DCurrent} />
+        <DrawPreview start={draw3DStart} current={draw3DCurrent} markerSize={markerSize} dashSize={dashSize} gapSize={gapSize} />
       )}
 
       {/* Existing measurements */}
@@ -330,6 +383,7 @@ function SceneContent() {
           measurement={m}
           label={getLabel(m)}
           selected={m.id === selectedId}
+          markerSize={markerSize}
         />
       ))}
     </>
