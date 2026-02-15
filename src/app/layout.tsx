@@ -3,6 +3,8 @@ import { Geist, Geist_Mono } from "next/font/google";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Toaster } from "@/components/ui/sonner";
 import { ServiceWorkerRegistrar } from "@/components/ServiceWorkerRegistrar";
+import { Analytics } from "@vercel/analytics/react";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 import "katex/dist/katex.min.css";
 import "./globals.css";
 
@@ -97,6 +99,8 @@ export default function RootLayout({
         </TooltipProvider>
         <Toaster position="bottom-right" />
         <ServiceWorkerRegistrar />
+        <Analytics />
+        <SpeedInsights />
       </body>
     </html>
   );
