@@ -22,8 +22,6 @@ export function MeasurementList() {
   const angles = measurements.filter((m) => m.type === 'angle');
   const areas = measurements.filter((m) => m.type === 'area');
   const annotations = measurements.filter((m) => m.type === 'annotation');
-  const refs3d = measurements.filter((m) => m.type === 'reference3d');
-  const measures3d = measurements.filter((m) => m.type === 'measure3d');
 
   return (
     <ScrollArea className="flex-1">
@@ -41,15 +39,6 @@ export function MeasurementList() {
           <MeasurementItem key={m.id} measurement={m} />
         ))}
         {annotations.map((m) => (
-          <MeasurementItem key={m.id} measurement={m} />
-        ))}
-        {refs3d.length > 0 && (
-          <div className="pt-2 pb-1 px-1 text-xs font-medium text-muted-foreground uppercase tracking-wider">3D Measurements</div>
-        )}
-        {refs3d.map((m) => (
-          <MeasurementItem key={m.id} measurement={m} />
-        ))}
-        {measures3d.map((m) => (
           <MeasurementItem key={m.id} measurement={m} />
         ))}
       </div>

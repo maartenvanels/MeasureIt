@@ -1,43 +1,39 @@
-import { Measurement, Measurement3D, AngleMeasurement, AreaMeasurement, Annotation, AnyMeasurement, Unit } from '@/types/measurement';
+import { Measurement, AngleMeasurement, AreaMeasurement, Annotation, AnyMeasurement, Unit } from '@/types/measurement';
 import { calcRealValue } from './calculations';
 import { drawMeasurementLine, drawAngleMeasurement, drawAreaMeasurement, drawCircleAreaMeasurement, drawFreehandAreaMeasurement, drawAnnotationLeader, drawLabel } from './canvas-rendering';
-import { calcRealDistance, calcRealArea, calcReal3DDistance } from './calculations';
+import { calcRealDistance, calcRealArea } from './calculations';
 import { hasLatex, renderNameLabelImage } from './latex-export';
 
 export function generateCSV(
   measurements: AnyMeasurement[],
   refValue: number,
   refUnit: Unit,
-  reference?: Measurement,
-  reference3D?: Measurement3D
+  imageRef?: Measurement,
+  modelRef?: Measurement
 ): string {
-  let csv = `Name,Type,Value,Unit,Pixel Length,Angle (deg),Pixel Area,3D Distance\n`;
+  let csv = `Name,Type,Surface,Value,Unit,Pixel Length,Angle (deg),Pixel Area,3D Distance\n`;
   for (const m of measurements) {
     if (m.type === 'annotation') {
       const content = (m as Annotation).content.replace(/"/g, '""').slice(0, 100);
-      csv += `"${content}",annotation,,,,,, \n`;
+      csv += `"${content}",annotation,,,,,,, \n`;
     } else if (m.type === 'area') {
       const area = m as AreaMeasurement;
       const unit = area.unitOverride ?? refUnit;
-      const realArea = calcRealArea(area.pixelArea, reference, refValue, refUnit, area.unitOverride);
-      csv += `"${m.name}",area,"${realArea ?? ''}",${unit},,,"${area.pixelArea.toFixed(2)}",\n`;
+      const realArea = calcRealArea(area.pixelArea, imageRef, refValue, refUnit, area.unitOverride);
+      csv += `"${m.name}",area,image,"${realArea ?? ''}",${unit},,,"${area.pixelArea.toFixed(2)}",\n`;
     } else if (m.type === 'angle') {
-      csv += `"${m.name}",angle,"${m.angleDeg.toFixed(2)}°",deg,,,,\n`;
-    } else if (m.type === 'reference3d' || m.type === 'measure3d') {
-      const m3d = m as Measurement3D;
-      const unit = m3d.unitOverride ?? refUnit;
-      const val = m.type === 'reference3d'
-        ? `${refValue}`
-        : calcReal3DDistance(m3d.distance, reference3D, refValue, refUnit, m3d.unitOverride).replace(` ${unit}`, '');
-      csv += `"${m.name}",${m.type},"${val}",${unit},,,,${m3d.distance.toFixed(4)}\n`;
+      csv += `"${m.name}",angle,image,"${m.angleDeg.toFixed(2)}°",deg,,,,,\n`;
     } else {
       const meas = m as Measurement;
+      const surface = meas.surface ?? 'image';
+      const ref = surface === 'model' ? modelRef : imageRef;
       const unit = meas.unitOverride ?? refUnit;
       const real =
         m.type === 'reference'
           ? `${refValue}`
-          : (calcRealDistance(meas.pixelLength, reference, refValue, refUnit, meas.unitOverride)?.replace(` ${unit}`, '') ?? '');
-      csv += `"${m.name}",${m.type},"${real}",${unit},${meas.pixelLength.toFixed(2)},,,\n`;
+          : (calcRealDistance(meas.pixelLength, ref, refValue, refUnit, meas.unitOverride)?.replace(` ${unit}`, '') ?? '');
+      const dist3D = meas.distance != null ? meas.distance.toFixed(4) : '';
+      csv += `"${m.name}",${m.type},${surface},"${real}",${unit},${meas.pixelLength.toFixed(2)},,,${dist3D}\n`;
     }
   }
   return csv;
@@ -47,8 +43,8 @@ export function generateJSON(
   measurements: AnyMeasurement[],
   refValue: number,
   refUnit: Unit,
-  reference?: Measurement,
-  reference3D?: Measurement3D
+  imageRef?: Measurement,
+  modelRef?: Measurement
 ): string {
   const data = measurements.map((m) => {
     if (m.type === 'annotation') {
@@ -61,23 +57,9 @@ export function generateJSON(
         ...(ann.arrowTarget ? { arrowTarget: { x: Math.round(ann.arrowTarget.x), y: Math.round(ann.arrowTarget.y) } } : {}),
       };
     }
-    if (m.type === 'reference3d' || m.type === 'measure3d') {
-      const m3d = m as Measurement3D;
-      return {
-        name: m.name,
-        type: m.type,
-        distance: Math.round(m3d.distance * 10000) / 10000,
-        realValue: m.type === 'reference3d' ? refValue : (reference3D && refValue > 0 ? Math.round(m3d.distance * (refValue / reference3D.distance) * 100) / 100 : null),
-        unit: m3d.unitOverride ?? refUnit,
-        coordinates: {
-          start: { x: m3d.start.x, y: m3d.start.y, z: m3d.start.z },
-          end: { x: m3d.end.x, y: m3d.end.y, z: m3d.end.z },
-        },
-      };
-    }
     if (m.type === 'area') {
       const area = m as AreaMeasurement;
-      const realArea = calcRealArea(area.pixelArea, reference, refValue, refUnit, area.unitOverride);
+      const realArea = calcRealArea(area.pixelArea, imageRef, refValue, refUnit, area.unitOverride);
       return {
         name: m.name,
         type: 'area' as const,
@@ -103,22 +85,33 @@ export function generateJSON(
       };
     }
     const meas = m as Measurement;
+    const surface = meas.surface ?? 'image';
+    const ref = surface === 'model' ? modelRef : imageRef;
     const realValue =
       m.type === 'reference'
         ? refValue
-        : calcRealValue(meas.pixelLength, reference, refValue);
+        : calcRealValue(meas.pixelLength, ref, refValue);
     return {
       name: m.name,
       type: m.type,
+      surface,
       pixelLength: Math.round(meas.pixelLength * 100) / 100,
       realValue: realValue ? Math.round(realValue * 100) / 100 : null,
       unit: meas.unitOverride ?? refUnit,
-      coordinates: {
-        x1: Math.round(meas.start.x),
-        y1: Math.round(meas.start.y),
-        x2: Math.round(meas.end.x),
-        y2: Math.round(meas.end.y),
-      },
+      ...(meas.start3D ? {
+        coordinates3D: {
+          start: { x: meas.start3D.x, y: meas.start3D.y, z: meas.start3D.z },
+          end: { x: meas.end3D!.x, y: meas.end3D!.y, z: meas.end3D!.z },
+        },
+        distance: meas.distance != null ? Math.round(meas.distance * 10000) / 10000 : undefined,
+      } : {
+        coordinates: {
+          x1: Math.round(meas.start.x),
+          y1: Math.round(meas.start.y),
+          x2: Math.round(meas.end.x),
+          y2: Math.round(meas.end.y),
+        },
+      }),
     };
   });
   return JSON.stringify(data, null, 2);
@@ -128,8 +121,8 @@ export function generateClipboardText(
   measurements: AnyMeasurement[],
   refValue: number,
   refUnit: Unit,
-  reference?: Measurement,
-  reference3D?: Measurement3D
+  imageRef?: Measurement,
+  modelRef?: Measurement
 ): string {
   let text = 'Measurements:\n';
   for (const m of measurements) {
@@ -138,24 +131,21 @@ export function generateClipboardText(
       text += `  [Note] ${content}\n`;
     } else if (m.type === 'area') {
       const area = m as AreaMeasurement;
-      const val = calcRealArea(area.pixelArea, reference, refValue, refUnit, area.unitOverride) ?? `${area.pixelArea.toFixed(0)} px\u00B2`;
+      const val = calcRealArea(area.pixelArea, imageRef, refValue, refUnit, area.unitOverride) ?? `${area.pixelArea.toFixed(0)} px\u00B2`;
       text += `  ${m.name}: ${val}\n`;
     } else if (m.type === 'angle') {
       text += `  ${m.name}: ${m.angleDeg.toFixed(1)}\u00B0\n`;
-    } else if (m.type === 'reference3d' || m.type === 'measure3d') {
-      const m3d = m as Measurement3D;
-      const val = m.type === 'reference3d'
-        ? `${refValue} ${refUnit} (3D reference)`
-        : calcReal3DDistance(m3d.distance, reference3D, refValue, refUnit, m3d.unitOverride);
-      text += `  ${m.name || '3D'}: ${val}\n`;
     } else {
       const meas = m as Measurement;
+      const surface = meas.surface ?? 'image';
+      const ref = surface === 'model' ? modelRef : imageRef;
+      const suffix = surface === 'model' ? ' (3D)' : '';
       const val =
         m.type === 'reference'
-          ? `${refValue} ${refUnit} (reference)`
-          : (calcRealDistance(meas.pixelLength, reference, refValue, refUnit, meas.unitOverride) ??
+          ? `${refValue} ${refUnit} (${surface === 'model' ? '3D ' : ''}reference)`
+          : (calcRealDistance(meas.pixelLength, ref, refValue, refUnit, meas.unitOverride) ??
             `${meas.pixelLength.toFixed(1)} px`);
-      text += `  ${m.name}: ${val}\n`;
+      text += `  ${m.name}${suffix}: ${val}\n`;
     }
   }
   return text;
@@ -167,7 +157,8 @@ export function generateClipboardText(
  */
 function getExportNameLabelPos(m: AnyMeasurement): { x: number; y: number } | null {
   if (m.type === 'annotation' || !m.name) return null;
-  if (m.type === 'reference3d' || m.type === 'measure3d') return null;
+  // Skip model-surface measurements (rendered in 3D scene, not on export canvas)
+  if ((m.type === 'reference' || m.type === 'measure') && (m as Measurement).surface === 'model') return null;
 
   let x: number;
   let y: number;

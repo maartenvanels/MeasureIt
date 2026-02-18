@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { Measurement, Measurement3D, AngleMeasurement, AreaMeasurement, Annotation, AnyMeasurement, Unit } from '@/types/measurement';
+import { Measurement, AngleMeasurement, AreaMeasurement, Annotation, AnyMeasurement, MeasurementSurface, Unit } from '@/types/measurement';
 
 interface MeasurementState {
   measurements: AnyMeasurement[];
@@ -9,7 +9,6 @@ interface MeasurementState {
   future: AnyMeasurement[][];
 
   addMeasurement: (m: Measurement) => void;
-  addMeasurement3D: (m: Measurement3D) => void;
   addAngle: (a: AngleMeasurement) => void;
   addArea: (a: AreaMeasurement) => void;
   addAnnotation: (a: Annotation) => void;
@@ -21,10 +20,9 @@ interface MeasurementState {
   clearAll: () => void;
   undo: () => void;
   redo: () => void;
-  getReference: () => Measurement | undefined;
-  getReference3D: () => Measurement3D | undefined;
-  getMeasureCount: () => number;
-  getMeasure3DCount: () => number;
+  /** Get the reference measurement, optionally filtered by surface */
+  getReference: (surface?: MeasurementSurface) => Measurement | undefined;
+  getMeasureCount: (surface?: MeasurementSurface) => number;
   getAngleCount: () => number;
   getAreaCount: () => number;
   getAnnotationCount: () => number;
@@ -41,29 +39,14 @@ export const useMeasurementStore = create<MeasurementState>((set, get) => ({
   addMeasurement: (m) => {
     const { measurements } = get();
     const past = [...get().past, [...measurements]].slice(-50);
+    const surface = m.surface ?? 'image';
 
     if (m.type === 'reference') {
+      // Replace the existing reference for the same surface
       set({
-        measurements: [m, ...measurements.filter((x) => x.type !== 'reference')],
-        past,
-        future: [],
-      });
-    } else {
-      set({
-        measurements: [...measurements, m],
-        past,
-        future: [],
-      });
-    }
-  },
-
-  addMeasurement3D: (m) => {
-    const { measurements } = get();
-    const past = [...get().past, [...measurements]].slice(-50);
-
-    if (m.type === 'reference3d') {
-      set({
-        measurements: [m, ...measurements.filter((x) => x.type !== 'reference3d')],
+        measurements: [m, ...measurements.filter((x) =>
+          !(x.type === 'reference' && ((x as Measurement).surface ?? 'image') === surface)
+        )],
         past,
         future: [],
       });
@@ -160,10 +143,22 @@ export const useMeasurementStore = create<MeasurementState>((set, get) => ({
     });
   },
 
-  getReference: () => get().measurements.find((m): m is Measurement => m.type === 'reference'),
-  getReference3D: () => get().measurements.find((m): m is Measurement3D => m.type === 'reference3d'),
-  getMeasureCount: () => get().measurements.filter((m) => m.type === 'measure').length,
-  getMeasure3DCount: () => get().measurements.filter((m) => m.type === 'measure3d').length,
+  getReference: (surface) => {
+    const s = surface ?? 'image';
+    return get().measurements.find(
+      (m): m is Measurement => m.type === 'reference' && ((m as Measurement).surface ?? 'image') === s
+    );
+  },
+
+  getMeasureCount: (surface) => {
+    if (surface) {
+      return get().measurements.filter(
+        (m) => m.type === 'measure' && ((m as Measurement).surface ?? 'image') === surface
+      ).length;
+    }
+    return get().measurements.filter((m) => m.type === 'measure').length;
+  },
+
   getAngleCount: () => get().measurements.filter((m) => m.type === 'angle').length,
   getAreaCount: () => get().measurements.filter((m) => m.type === 'area').length,
   getAnnotationCount: () => get().measurements.filter((m) => m.type === 'annotation').length,
@@ -194,8 +189,8 @@ export const useMeasurementStore = create<MeasurementState>((set, get) => ({
           ...(m.center ? { center: { x: m.center.x + dx, y: m.center.y + dy } } : {}),
         };
       }
-      // 3D measurements are not affected by 2D coordinate adjustments
-      if (m.type === 'reference3d' || m.type === 'measure3d') {
+      // Model surface measurements are not affected by 2D coordinate adjustments
+      if ((m as Measurement).surface === 'model') {
         return m;
       }
       return {

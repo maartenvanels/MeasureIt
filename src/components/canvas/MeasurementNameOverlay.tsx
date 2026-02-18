@@ -23,7 +23,8 @@ function getNameLabelPos(
   transform: ViewTransform
 ): { x: number; y: number } | null {
   if (m.type === 'annotation') return null;
-  if (m.type === 'reference3d' || m.type === 'measure3d') return null;
+  // Skip model-surface measurements (rendered in 3D scene)
+  if ((m.type === 'reference' || m.type === 'measure') && (m as Measurement).surface === 'model') return null;
   if (!m.name) return null;
 
   let baseX: number;

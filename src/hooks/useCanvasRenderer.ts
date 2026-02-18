@@ -89,12 +89,12 @@ export function useCanvasRenderer(
         if (m.type === 'area') {
           return calcRealArea(m.pixelArea, ref, referenceValue, referenceUnit, (m as AreaMeasurement).unitOverride) ?? `${m.pixelArea.toFixed(0)} px\u00B2`;
         }
+        // Skip model-surface measurements in 2D canvas renderer
+        if ((m as Measurement).surface === 'model') {
+          return '';
+        }
         if (m.type === 'reference') {
           return `${referenceValue} ${referenceUnit} (ref)`;
-        }
-        // Skip 3D measurements in 2D canvas renderer
-        if (m.type === 'reference3d' || m.type === 'measure3d') {
-          return '';
         }
         const meas = m as Measurement;
         return calcRealDistance(meas.pixelLength, ref, referenceValue, referenceUnit, meas.unitOverride) ??

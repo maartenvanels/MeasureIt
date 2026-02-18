@@ -1,4 +1,4 @@
-import { Measurement, Measurement3D, Unit } from '@/types/measurement';
+import { Measurement, Unit } from '@/types/measurement';
 
 const UNIT_TO_MM: Record<Unit, number> = {
   mm: 1,
@@ -14,6 +14,11 @@ export function convertUnit(value: number, from: Unit, to: Unit): number {
   return value * (UNIT_TO_MM[from] / UNIT_TO_MM[to]);
 }
 
+/**
+ * Calculate real distance from pixel/model length using a reference measurement.
+ * Works for both 2D image (pixelLength) and 3D model (distance) measurements —
+ * just pass the matching-surface reference.
+ */
 export function calcRealDistance(
   pixelLength: number,
   reference: Measurement | undefined,
@@ -57,23 +62,4 @@ export function calcRealArea(
     realArea = realArea * linearFactor * linearFactor;
   }
   return `${realArea.toFixed(2)} ${unit}\u00B2`;
-}
-
-export function calcReal3DDistance(
-  distance: number,
-  reference3D: Measurement3D | undefined,
-  refValue: number,
-  refUnit: Unit,
-  displayUnit?: Unit
-): string {
-  if (!reference3D || !refValue || refValue <= 0 || reference3D.distance <= 0) {
-    return distance.toFixed(2);
-  }
-  const ratio = refValue / reference3D.distance;
-  let realDist = distance * ratio;
-  const unit = displayUnit ?? refUnit;
-  if (displayUnit && displayUnit !== refUnit) {
-    realDist = convertUnit(realDist, refUnit, displayUnit);
-  }
-  return `${realDist.toFixed(2)} ${unit}`;
 }

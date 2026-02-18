@@ -1,7 +1,30 @@
-import { Point, ViewTransform, AnyMeasurement } from '@/types/measurement';
+import { Point, Point3D, ViewTransform, AnyMeasurement } from '@/types/measurement';
+import * as THREE from 'three';
 
 export function pixelDist(a: Point, b: Point): number {
   return Math.sqrt((b.x - a.x) ** 2 + (b.y - a.y) ** 2);
+}
+
+/**
+ * Convert image-space coordinates to Three.js world position.
+ * Image Y is flipped (down = positive) vs Three.js Y (up = positive).
+ */
+export function imageToWorld(x: number, y: number): THREE.Vector3 {
+  return new THREE.Vector3(x, -y, 0);
+}
+
+/**
+ * Convert Three.js world position back to image-space coordinates.
+ */
+export function worldToImage(vec: THREE.Vector3): Point {
+  return { x: vec.x, y: -vec.y };
+}
+
+/**
+ * Convert a ThreeEvent hit point (world space) to image-space Point.
+ */
+export function hitToImage(point: { x: number; y: number; z: number }): Point {
+  return { x: point.x, y: -point.y };
 }
 
 export function screenToImage(screenX: number, screenY: number, transform: ViewTransform): Point {

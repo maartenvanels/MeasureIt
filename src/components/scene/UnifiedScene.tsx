@@ -1,19 +1,29 @@
 'use client';
 
-import { useRef, useMemo, useCallback, useState, useEffect } from 'react';
+import { useRef, useMemo, useCallback, useState, useEffect, Suspense } from 'react';
 import { Canvas, useThree, useLoader, ThreeEvent } from '@react-three/fiber';
-import { OrbitControls, Html, Line, Bvh, Center, GizmoHelper, GizmoViewcube } from '@react-three/drei';
+import { Html, Line, Bvh, Center, GizmoHelper, GizmoViewcube } from '@react-three/drei';
 import { STLLoader } from 'three/examples/jsm/loaders/STLLoader.js';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import * as THREE from 'three';
 import { useCanvasStore } from '@/stores/useCanvasStore';
 import { useUIStore } from '@/stores/useUIStore';
 import { useMeasurementStore } from '@/stores/useMeasurementStore';
-import { Point, Point3D, Measurement3D } from '@/types/measurement';
+import { Point, Point3D, Measurement, AngleMeasurement as AngleMeasurementType, AreaMeasurement as AreaMeasurementType, Annotation, AnyMeasurement } from '@/types/measurement';
 import { DEFAULT_COLORS } from '@/lib/canvas-rendering';
-import { calcReal3DDistance } from '@/lib/calculations';
+import { calcRealDistance, calcRealArea } from '@/lib/calculations';
+import { ImagePlane } from './ImagePlane';
+import { SceneControls, useImageCamera } from './SceneControls';
+import { MeasurementLineComponent } from './measurements/MeasurementLine';
+import { AngleMeasurementComponent } from './measurements/AngleMeasurement';
+import { AreaMeasurementComponent } from './measurements/AreaMeasurement';
+import { AnnotationMarkerComponent } from './measurements/AnnotationMarker';
+import { SnapIndicator } from './measurements/SnapIndicator';
+import { ImageGrid } from './measurements/ImageGrid';
+import { DrawPreviewLine, DrawPreviewAngle, DrawPreviewArea, DrawPreviewFreehand, DrawPreviewCircle3Pt, DrawPreviewCircleCenter } from './measurements/DrawPreview';
+import { useSceneInteraction } from '@/hooks/useSceneInteraction';
 
-// ---- Model mesh components ----
+// ---- Model mesh components (from ModelViewer) ----
 
 interface ModelProps {
   url: string;
@@ -55,7 +65,7 @@ function GLBModel({ url, onPointerDown, onPointerMove, onPointerLeave }: ModelPr
   );
 }
 
-// ---- Measurement markers ----
+// ---- 3D Measurement components (from ModelViewer) ----
 
 function MeasurementPoint({ position, color, scale = 0.02 }: { position: Point3D; color: string; scale?: number }) {
   return (
@@ -65,8 +75,6 @@ function MeasurementPoint({ position, color, scale = 0.02 }: { position: Point3D
     </mesh>
   );
 }
-
-// ---- Origin axes ----
 
 function OriginAxes({ size }: { size: number }) {
   return (
@@ -87,20 +95,16 @@ function OriginAxes({ size }: { size: number }) {
   );
 }
 
-// ---- Cartesian decomposition lines ----
-
 function CartesianLines({ start, end, dashSize, gapSize }: {
   start: Point3D; end: Point3D; dashSize: number; gapSize: number;
 }) {
   const dx = Math.abs(end.x - start.x);
   const dy = Math.abs(end.y - start.y);
   const dz = Math.abs(end.z - start.z);
-
   const p0: [number, number, number] = [start.x, start.y, start.z];
   const p1: [number, number, number] = [end.x, start.y, start.z];
   const p2: [number, number, number] = [end.x, end.y, start.z];
   const p3: [number, number, number] = [end.x, end.y, end.z];
-
   const midX: [number, number, number] = [(start.x + end.x) / 2, start.y, start.z];
   const midY: [number, number, number] = [end.x, (start.y + end.y) / 2, start.z];
   const midZ: [number, number, number] = [end.x, end.y, (start.z + end.z) / 2];
@@ -134,8 +138,6 @@ function CartesianLines({ start, end, dashSize, gapSize }: {
     </group>
   );
 }
-
-// ---- Draggable 3D label ----
 
 function DraggableLabel({ measurementId, position, offset, labelType, children, style }: {
   measurementId: string;
@@ -195,10 +197,8 @@ function DraggableLabel({ measurementId, position, offset, labelType, children, 
   );
 }
 
-// ---- Measurement line with separate labels ----
-
 function MeasurementLine3D({ measurement, label, selected, markerSize, showAxis, dashSize, gapSize }: {
-  measurement: Measurement3D;
+  measurement: Measurement;
   label: string;
   selected: boolean;
   markerSize: number;
@@ -207,32 +207,27 @@ function MeasurementLine3D({ measurement, label, selected, markerSize, showAxis,
   gapSize: number;
 }) {
   const color = measurement.color ?? DEFAULT_COLORS[measurement.type] ?? '#06b6d4';
+  const s = measurement.start3D!;
+  const e = measurement.end3D!;
   const midpoint: [number, number, number] = [
-    (measurement.start.x + measurement.end.x) / 2,
-    (measurement.start.y + measurement.end.y) / 2,
-    (measurement.start.z + measurement.end.z) / 2,
+    (s.x + e.x) / 2,
+    (s.y + e.y) / 2,
+    (s.z + e.z) / 2,
   ];
 
   return (
     <group>
       <Line
         points={[
-          [measurement.start.x, measurement.start.y, measurement.start.z],
-          [measurement.end.x, measurement.end.y, measurement.end.z],
+          [s.x, s.y, s.z],
+          [e.x, e.y, e.z],
         ]}
         color={color}
         lineWidth={selected ? 3 : 2}
       />
-      <MeasurementPoint position={measurement.start} color={color} scale={markerSize} />
-      <MeasurementPoint position={measurement.end} color={color} scale={markerSize} />
-
-      {/* Value label (draggable) */}
-      <DraggableLabel
-        measurementId={measurement.id}
-        position={midpoint}
-        offset={measurement.labelOffset}
-        labelType="value"
-      >
+      <MeasurementPoint position={s} color={color} scale={markerSize} />
+      <MeasurementPoint position={e} color={color} scale={markerSize} />
+      <DraggableLabel measurementId={measurement.id} position={midpoint} offset={measurement.labelOffset} labelType="value">
         <div
           className="rounded px-2 py-0.5 text-xs font-mono whitespace-nowrap"
           style={{
@@ -244,8 +239,6 @@ function MeasurementLine3D({ measurement, label, selected, markerSize, showAxis,
           {label}
         </div>
       </DraggableLabel>
-
-      {/* Name label (draggable, separate) */}
       {measurement.name && (
         <DraggableLabel
           measurementId={measurement.id}
@@ -265,18 +258,12 @@ function MeasurementLine3D({ measurement, label, selected, markerSize, showAxis,
           </div>
         </DraggableLabel>
       )}
-
-      {/* Cartesian decomposition */}
-      {showAxis && (
-        <CartesianLines start={measurement.start} end={measurement.end} dashSize={dashSize} gapSize={gapSize} />
-      )}
+      {showAxis && <CartesianLines start={s} end={e} dashSize={dashSize} gapSize={gapSize} />}
     </group>
   );
 }
 
-// ---- In-progress drawing preview ----
-
-function DrawPreview({ start, current, markerSize, dashSize, gapSize, showAxis }: {
+function DrawPreview3D({ start, current, markerSize, dashSize, gapSize, showAxis }: {
   start: Point3D; current: Point3D; markerSize: number; dashSize: number; gapSize: number; showAxis: boolean;
 }) {
   const midpoint: [number, number, number] = [
@@ -292,10 +279,7 @@ function DrawPreview({ start, current, markerSize, dashSize, gapSize, showAxis }
   return (
     <group>
       <Line
-        points={[
-          [start.x, start.y, start.z],
-          [current.x, current.y, current.z],
-        ]}
+        points={[[start.x, start.y, start.z], [current.x, current.y, current.z]]}
         color="#ffffff"
         lineWidth={1.5}
         dashed
@@ -314,8 +298,6 @@ function DrawPreview({ start, current, markerSize, dashSize, gapSize, showAxis }
   );
 }
 
-// ---- Auto-fit camera on model load ----
-
 function CameraFitter({ children, onModelScale }: { children: React.ReactNode; onModelScale?: (scale: number) => void }) {
   const groupRef = useRef<THREE.Group>(null);
   const { camera } = useThree();
@@ -325,12 +307,10 @@ function CameraFitter({ children, onModelScale }: { children: React.ReactNode; o
     if (!groupRef.current || fitted) return;
     const box = new THREE.Box3().setFromObject(groupRef.current);
     if (box.isEmpty()) return;
-
     const center = box.getCenter(new THREE.Vector3());
     const size = box.getSize(new THREE.Vector3());
     const maxDim = Math.max(size.x, size.y, size.z);
     const distance = maxDim * 2;
-
     camera.position.set(center.x + distance * 0.5, center.y + distance * 0.3, center.z + distance * 0.5);
     camera.lookAt(center);
     if (camera instanceof THREE.PerspectiveCamera) {
@@ -345,8 +325,6 @@ function CameraFitter({ children, onModelScale }: { children: React.ReactNode; o
   return <group ref={groupRef}>{children}</group>;
 }
 
-// ---- Hover indicator ----
-
 function HoverIndicator({ point, scale = 0.03, snapped = false }: { point: Point3D; scale?: number; snapped?: boolean }) {
   return (
     <mesh position={[point.x, point.y, point.z]}>
@@ -356,28 +334,24 @@ function HoverIndicator({ point, scale = 0.03, snapped = false }: { point: Point
   );
 }
 
-// ---- Snap helper ----
-
 function findSnap3D(
   mouseNDC: { x: number; y: number },
-  measurements3D: Measurement3D[],
+  modelMeasurements: Measurement[],
   camera: THREE.Camera,
   gl: THREE.WebGLRenderer,
   threshold = 16
 ): Point3D | null {
   const endpoints: Point3D[] = [];
-  for (const m of measurements3D) {
-    endpoints.push(m.start, m.end);
+  for (const m of modelMeasurements) {
+    if (m.start3D) endpoints.push(m.start3D);
+    if (m.end3D) endpoints.push(m.end3D);
   }
   if (endpoints.length === 0) return null;
-
   const canvasRect = gl.domElement.getBoundingClientRect();
   const mouseScreenX = ((mouseNDC.x + 1) / 2) * canvasRect.width;
   const mouseScreenY = ((1 - mouseNDC.y) / 2) * canvasRect.height;
-
   let nearest: Point3D | null = null;
   let nearestDist = Infinity;
-
   const v = new THREE.Vector3();
   for (const ep of endpoints) {
     v.set(ep.x, ep.y, ep.z);
@@ -393,9 +367,202 @@ function findSnap3D(
   return nearest;
 }
 
-// ---- Main scene content ----
+// ---- Image scene content ----
 
-function SceneContent() {
+function ImageSceneContent() {
+  const image = useCanvasStore((s) => s.image);
+  const isDrawing = useCanvasStore((s) => s.isDrawing);
+  const drawStart = useCanvasStore((s) => s.drawStart);
+  const drawCurrent = useCanvasStore((s) => s.drawCurrent);
+  const snapPoint = useCanvasStore((s) => s.snapPoint);
+  const angleStep = useCanvasStore((s) => s.angleStep);
+  const angleVertex = useCanvasStore((s) => s.angleVertex);
+  const angleArmA = useCanvasStore((s) => s.angleArmA);
+  const areaPoints = useCanvasStore((s) => s.areaPoints);
+  const freehandPoints = useCanvasStore((s) => s.freehandPoints);
+  const isFreehandDrawing = useCanvasStore((s) => s.isFreehandDrawing);
+  const circle3PtPoints = useCanvasStore((s) => s.circle3PtPoints);
+  const circleCenterPoint = useCanvasStore((s) => s.circleCenterPoint);
+
+  const mode = useUIStore((s) => s.mode);
+  const selectedId = useUIStore((s) => s.selectedMeasurementId);
+  const selectMeasurement = useUIStore((s) => s.selectMeasurement);
+  const gridEnabled = useUIStore((s) => s.gridEnabled);
+  const gridSpacing = useUIStore((s) => s.gridSpacing);
+  const openAnnotationEditor = useUIStore((s) => s.openAnnotationEditor);
+
+  const measurements = useMeasurementStore((s) => s.measurements);
+  const referenceValue = useMeasurementStore((s) => s.referenceValue);
+  const referenceUnit = useMeasurementStore((s) => s.referenceUnit);
+  const getReference = useMeasurementStore((s) => s.getReference);
+
+  const { fitToImage } = useImageCamera();
+  const [fitted, setFitted] = useState(false);
+
+  // Wire up scene interaction (snap, drawing, drag)
+  const { onPointerDown, onPointerMove, onDoubleClick } = useSceneInteraction();
+
+  // Fit camera to image on first load
+  useEffect(() => {
+    if (image && !fitted) {
+      fitToImage(image.width, image.height);
+      setFitted(true);
+    }
+  }, [image, fitted, fitToImage]);
+
+  // Reset fit when image changes
+  useEffect(() => {
+    setFitted(false);
+  }, [image]);
+
+  const isMeasuring = mode !== 'none';
+
+  // Get label for a 2D measurement
+  const getLabel = useCallback((m: AnyMeasurement): string => {
+    const ref = getReference();
+    if (m.type === 'reference') {
+      return referenceValue > 0 ? `${referenceValue} ${referenceUnit} (ref)` : `${(m as Measurement).pixelLength.toFixed(1)} px`;
+    }
+    if (m.type === 'measure') {
+      const result = calcRealDistance((m as Measurement).pixelLength, ref, referenceValue, referenceUnit, (m as Measurement).unitOverride);
+      return result ?? `${(m as Measurement).pixelLength.toFixed(1)} px`;
+    }
+    if (m.type === 'area') {
+      const area = m as AreaMeasurementType;
+      const result = calcRealArea(area.pixelArea, ref, referenceValue, referenceUnit, area.unitOverride);
+      return result ?? `${area.pixelArea.toFixed(1)} px²`;
+    }
+    return '';
+  }, [getReference, referenceValue, referenceUnit]);
+
+  // In-progress line label
+  const inProgressLabel = useMemo(() => {
+    if (!isDrawing || !drawStart || !drawCurrent) return '';
+    const dx = drawCurrent.x - drawStart.x;
+    const dy = drawCurrent.y - drawStart.y;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    const ref = getReference();
+    if (ref && referenceValue > 0) {
+      const ratio = referenceValue / ref.pixelLength;
+      return `${(dist * ratio).toFixed(2)} ${referenceUnit}`;
+    }
+    return `${dist.toFixed(1)} px`;
+  }, [isDrawing, drawStart, drawCurrent, getReference, referenceValue, referenceUnit]);
+
+  // Filter 2D (image-surface) measurements
+  const measurements2D = useMemo(() =>
+    measurements.filter(m => {
+      if (m.type === 'reference' || m.type === 'measure') {
+        return ((m as Measurement).surface ?? 'image') === 'image';
+      }
+      return true; // angles, areas, annotations are always image-space
+    }),
+    [measurements]
+  );
+
+  if (!image) return null;
+
+  return (
+    <>
+      <SceneControls mode="ortho" disabled={isMeasuring} />
+
+      {/* Image plane with interaction handlers */}
+      <ImagePlane
+        image={image}
+        onPointerDown={onPointerDown}
+        onPointerMove={onPointerMove}
+        onDoubleClick={onDoubleClick}
+      />
+
+      {/* Grid overlay */}
+      {gridEnabled && (
+        <ImageGrid imageWidth={image.width} imageHeight={image.height} spacing={gridSpacing} />
+      )}
+
+      {/* Existing measurements */}
+      {measurements2D.map((m) => {
+        if (m.type === 'reference' || m.type === 'measure') {
+          return (
+            <MeasurementLineComponent
+              key={m.id}
+              measurement={m as Measurement}
+              label={getLabel(m)}
+              selected={m.id === selectedId}
+            />
+          );
+        }
+        if (m.type === 'angle') {
+          return (
+            <AngleMeasurementComponent
+              key={m.id}
+              measurement={m as AngleMeasurementType}
+              selected={m.id === selectedId}
+            />
+          );
+        }
+        if (m.type === 'area') {
+          return (
+            <AreaMeasurementComponent
+              key={m.id}
+              measurement={m as AreaMeasurementType}
+              label={getLabel(m)}
+              selected={m.id === selectedId}
+            />
+          );
+        }
+        if (m.type === 'annotation') {
+          return (
+            <AnnotationMarkerComponent
+              key={m.id}
+              annotation={m as Annotation}
+              selected={m.id === selectedId}
+              onSelect={() => selectMeasurement(m.id)}
+              onDoubleClick={() => openAnnotationEditor(m.id)}
+            />
+          );
+        }
+        return null;
+      })}
+
+      {/* In-progress line drawing */}
+      {isDrawing && drawStart && drawCurrent && (
+        <DrawPreviewLine start={drawStart} end={drawCurrent} mode={mode} label={inProgressLabel} />
+      )}
+
+      {/* In-progress angle drawing */}
+      {angleStep && (
+        <DrawPreviewAngle vertex={angleVertex} armA={angleArmA} cursorPos={drawCurrent} />
+      )}
+
+      {/* In-progress polygon area */}
+      {areaPoints.length > 0 && (mode === 'area' || mode === 'area-polygon') && (
+        <DrawPreviewArea points={areaPoints} cursorPos={drawCurrent} />
+      )}
+
+      {/* In-progress freehand */}
+      {isFreehandDrawing && freehandPoints.length > 0 && (
+        <DrawPreviewFreehand points={freehandPoints} />
+      )}
+
+      {/* In-progress circle 3-point */}
+      {circle3PtPoints.length > 0 && mode === 'area-circle-3pt' && (
+        <DrawPreviewCircle3Pt placedPoints={circle3PtPoints} cursorPos={drawCurrent} />
+      )}
+
+      {/* In-progress circle center */}
+      {circleCenterPoint && mode === 'area-circle-center' && (
+        <DrawPreviewCircleCenter center={circleCenterPoint} cursorPos={drawCurrent} />
+      )}
+
+      {/* Snap indicator */}
+      {snapPoint && <SnapIndicator point={snapPoint} />}
+    </>
+  );
+}
+
+// ---- 3D Model scene content ----
+
+function ModelSceneContent() {
   const modelUrl = useCanvasStore((s) => s.modelUrl);
   const modelFileType = useCanvasStore((s) => s.modelFileType);
   const draw3DStart = useCanvasStore((s) => s.draw3DStart);
@@ -409,34 +576,32 @@ function SceneContent() {
   const showAxisDistances = useUIStore((s) => s.show3DAxisDistances);
 
   const measurements = useMeasurementStore((s) => s.measurements);
-  const addMeasurement3D = useMeasurementStore((s) => s.addMeasurement3D);
-  const getMeasure3DCount = useMeasurementStore((s) => s.getMeasure3DCount);
+  const addMeasurement = useMeasurementStore((s) => s.addMeasurement);
+  const getMeasureCount = useMeasurementStore((s) => s.getMeasureCount);
   const referenceValue = useMeasurementStore((s) => s.referenceValue);
   const referenceUnit = useMeasurementStore((s) => s.referenceUnit);
-  const getReference3D = useMeasurementStore((s) => s.getReference3D);
+  const getReference = useMeasurementStore((s) => s.getReference);
 
   const [hoverPoint, setHoverPoint] = useState<Point3D | null>(null);
   const [isSnapped, setIsSnapped] = useState(false);
   const [modelScale, setModelScale] = useState(1);
-  const orbitRef = useRef<any>(null);
   const { camera, gl } = useThree();
 
-  const isMeasuring = mode === 'reference3d' || mode === 'measure3d';
+  const isMeasuring = mode === 'reference' || mode === 'measure';
 
-  // Sphere size relative to model (about 0.5% of max dimension)
   const markerSize = modelScale * 0.005;
   const hoverSize = markerSize * 1.5;
   const dashSize = modelScale * 0.02;
   const gapSize = modelScale * 0.012;
   const axisSize = modelScale * 0.15;
 
-  // Filter 3D measurements
-  const measurements3D = useMemo(
-    () => measurements.filter((m): m is Measurement3D => m.type === 'reference3d' || m.type === 'measure3d'),
+  const modelMeasurements = useMemo(
+    () => measurements.filter((m): m is Measurement =>
+      (m.type === 'reference' || m.type === 'measure') && (m as Measurement).surface === 'model'
+    ),
     [measurements]
   );
 
-  // Try to snap a 3D point to an existing endpoint
   const trySnap = useCallback(
     (surfacePoint: Point3D, e: ThreeEvent<PointerEvent>): Point3D => {
       const canvasRect = gl.domElement.getBoundingClientRect();
@@ -444,22 +609,18 @@ function SceneContent() {
         x: ((e.clientX - canvasRect.left) / canvasRect.width) * 2 - 1,
         y: -((e.clientY - canvasRect.top) / canvasRect.height) * 2 + 1,
       };
-      const snapped = findSnap3D(mouseNDC, measurements3D, camera, gl);
-      if (snapped) {
-        setIsSnapped(true);
-        return snapped;
-      }
+      const snapped = findSnap3D(mouseNDC, modelMeasurements, camera, gl);
+      if (snapped) { setIsSnapped(true); return snapped; }
       setIsSnapped(false);
       return surfacePoint;
     },
-    [measurements3D, camera, gl]
+    [modelMeasurements, camera, gl]
   );
 
   const handlePointerDown = useCallback(
     (e: ThreeEvent<PointerEvent>) => {
       if (!isMeasuring) return;
       e.stopPropagation();
-
       const surfacePoint: Point3D = { x: e.point.x, y: e.point.y, z: e.point.z };
       const point = trySnap(surfacePoint, e);
 
@@ -474,72 +635,53 @@ function SceneContent() {
           const dz = draw3DCurrent.z - draw3DStart.z;
           const distance = Math.sqrt(dx * dx + dy * dy + dz * dz);
           if (distance >= 0.0001) {
-            const type = mode as 'reference3d' | 'measure3d';
-            const name = type === 'reference3d'
-              ? 'Reference 3D'
-              : `3D Measurement ${getMeasure3DCount() + 1}`;
-            const m: Measurement3D = {
-              id: crypto.randomUUID(),
-              type,
-              start: draw3DStart,
-              end: draw3DCurrent,
+            const type = mode as 'reference' | 'measure';
+            const name = type === 'reference' ? 'Reference 3D' : `3D Measurement ${getMeasureCount('model') + 1}`;
+            const m: Measurement = {
+              id: crypto.randomUUID(), type, name, createdAt: Date.now(),
+              surface: 'model',
+              start: { x: 0, y: 0 }, end: { x: 0, y: 0 },
+              pixelLength: distance,
+              start3D: draw3DStart, end3D: draw3DCurrent,
               distance,
-              name,
-              createdAt: Date.now(),
             };
-            addMeasurement3D(m);
+            addMeasurement(m);
           }
         }
         useCanvasStore.getState().cancelDrawing3D();
       }
     },
-    [isMeasuring, isDrawing3D, mode, startDrawing3D, addMeasurement3D, getMeasure3DCount, trySnap]
+    [isMeasuring, isDrawing3D, mode, startDrawing3D, addMeasurement, getMeasureCount, trySnap]
   );
 
   const handlePointerMove = useCallback(
     (e: ThreeEvent<PointerEvent>) => {
-      if (!isMeasuring) {
-        setHoverPoint(null);
-        setIsSnapped(false);
-        return;
-      }
+      if (!isMeasuring) { setHoverPoint(null); setIsSnapped(false); return; }
       const surfacePoint: Point3D = { x: e.point.x, y: e.point.y, z: e.point.z };
       const point = trySnap(surfacePoint, e);
       setHoverPoint(point);
-
-      if (isDrawing3D) {
-        useCanvasStore.getState().updateDrawing3D(point);
-      }
+      if (isDrawing3D) useCanvasStore.getState().updateDrawing3D(point);
     },
     [isMeasuring, isDrawing3D, trySnap]
   );
 
-  const handlePointerLeave = useCallback(() => {
-    setHoverPoint(null);
-    setIsSnapped(false);
-  }, []);
+  const handlePointerLeave = useCallback(() => { setHoverPoint(null); setIsSnapped(false); }, []);
 
   const handleCanvasClick = useCallback(
-    (e: ThreeEvent<PointerEvent>) => {
-      if (!isMeasuring) {
-        selectMeasurement(null);
-      }
-    },
+    () => { if (!isMeasuring) selectMeasurement(null); },
     [isMeasuring, selectMeasurement]
   );
 
   const getLabel = useCallback(
-    (m: Measurement3D) => {
-      if (m.type === 'reference3d') {
-        return referenceValue > 0 ? `${referenceValue} ${referenceUnit} (ref)` : m.distance.toFixed(4);
+    (m: Measurement) => {
+      if (m.type === 'reference') {
+        return referenceValue > 0 ? `${referenceValue} ${referenceUnit} (ref)` : (m.distance?.toFixed(4) ?? '');
       }
-      const ref3d = getReference3D();
-      if (ref3d && referenceValue > 0) {
-        return calcReal3DDistance(m.distance, ref3d, referenceValue, referenceUnit, m.unitOverride);
-      }
-      return m.distance.toFixed(4);
+      const ref = getReference('model');
+      const result = calcRealDistance(m.pixelLength, ref, referenceValue, referenceUnit, m.unitOverride);
+      return result ?? (m.distance?.toFixed(4) ?? '');
     },
-    [getReference3D, referenceValue, referenceUnit]
+    [getReference, referenceValue, referenceUnit]
   );
 
   if (!modelUrl || !modelFileType) return null;
@@ -550,13 +692,7 @@ function SceneContent() {
       <directionalLight position={[10, 10, 5]} intensity={0.8} />
       <directionalLight position={[-5, -5, -5]} intensity={0.3} />
 
-      <OrbitControls
-        ref={orbitRef}
-        makeDefault
-        enabled={!isMeasuring}
-        enableDamping
-        dampingFactor={0.1}
-      />
+      <SceneControls mode="orbit" disabled={isMeasuring} />
 
       <GizmoHelper alignment="bottom-right" margin={[80, 80]}>
         <GizmoViewcube />
@@ -567,19 +703,9 @@ function SceneContent() {
       <Bvh firstHitOnly>
         <CameraFitter onModelScale={setModelScale}>
           {modelFileType === 'stl' ? (
-            <STLModel
-              url={modelUrl}
-              onPointerDown={handlePointerDown}
-              onPointerMove={handlePointerMove}
-              onPointerLeave={handlePointerLeave}
-            />
+            <STLModel url={modelUrl} onPointerDown={handlePointerDown} onPointerMove={handlePointerMove} onPointerLeave={handlePointerLeave} />
           ) : (
-            <GLBModel
-              url={modelUrl}
-              onPointerDown={handlePointerDown}
-              onPointerMove={handlePointerMove}
-              onPointerLeave={handlePointerLeave}
-            />
+            <GLBModel url={modelUrl} onPointerDown={handlePointerDown} onPointerMove={handlePointerMove} onPointerLeave={handlePointerLeave} />
           )}
         </CameraFitter>
       </Bvh>
@@ -588,23 +714,13 @@ function SceneContent() {
         <sphereGeometry args={[1000]} />
       </mesh>
 
-      {/* Hover indicator */}
       {hoverPoint && isMeasuring && <HoverIndicator point={hoverPoint} scale={hoverSize} snapped={isSnapped} />}
 
-      {/* In-progress drawing */}
       {isDrawing3D && draw3DStart && draw3DCurrent && (
-        <DrawPreview
-          start={draw3DStart}
-          current={draw3DCurrent}
-          markerSize={markerSize}
-          dashSize={dashSize}
-          gapSize={gapSize}
-          showAxis={showAxisDistances}
-        />
+        <DrawPreview3D start={draw3DStart} current={draw3DCurrent} markerSize={markerSize} dashSize={dashSize} gapSize={gapSize} showAxis={showAxisDistances} />
       )}
 
-      {/* Existing measurements */}
-      {measurements3D.map((m) => (
+      {modelMeasurements.map((m) => (
         <MeasurementLine3D
           key={m.id}
           measurement={m}
@@ -620,7 +736,7 @@ function SceneContent() {
   );
 }
 
-// ---- Main exported component ----
+// ---- Axis distance toggle overlay ----
 
 function AxisDistanceToggle() {
   const show = useUIStore((s) => s.show3DAxisDistances);
@@ -634,29 +750,54 @@ function AxisDistanceToggle() {
           ? 'bg-cyan-900/60 text-cyan-300 border border-cyan-700/50'
           : 'bg-zinc-800/80 text-zinc-500 border border-zinc-700/50 hover:text-zinc-300'
       }`}
-      title="Toggle cartesian decomposition (Δx, Δy, Δz)"
+      title="Toggle cartesian decomposition"
     >
       Δxyz
     </button>
   );
 }
 
-export default function ModelViewer() {
+// ---- Main exported component ----
+
+export function UnifiedScene() {
+  const image = useCanvasStore((s) => s.image);
+  const modelUrl = useCanvasStore((s) => s.modelUrl);
+  const viewMode = useUIStore((s) => s.viewMode);
+
+  const is3D = viewMode === '3d';
+  const showImage = !is3D && !!image;
+  const showModel = is3D && !!modelUrl;
+
   return (
     <div className="relative w-full h-full">
-      <Canvas
-        camera={{ position: [0, 0, 5], fov: 50 }}
-        style={{ background: '#1a1a2e' }}
-        onPointerMissed={() => {
-          const { isDrawing3D } = useCanvasStore.getState();
-          if (isDrawing3D) {
-            useCanvasStore.getState().cancelDrawing3D();
-          }
-        }}
-      >
-        <SceneContent />
-      </Canvas>
-      <AxisDistanceToggle />
+      {showImage && (
+        <Canvas
+          orthographic
+          camera={{ position: [0, 0, 100], zoom: 1, near: 0.1, far: 1000 }}
+          style={{ background: '#09090b' }}
+          onPointerMissed={() => {
+            const state = useCanvasStore.getState();
+            if (state.isDrawing) state.cancelDrawing();
+          }}
+        >
+          <ImageSceneContent />
+        </Canvas>
+      )}
+
+      {showModel && (
+        <Canvas
+          camera={{ position: [0, 0, 5], fov: 50 }}
+          style={{ background: '#1a1a2e' }}
+          onPointerMissed={() => {
+            const { isDrawing3D } = useCanvasStore.getState();
+            if (isDrawing3D) useCanvasStore.getState().cancelDrawing3D();
+          }}
+        >
+          <ModelSceneContent />
+        </Canvas>
+      )}
+
+      {showModel && <AxisDistanceToggle />}
     </div>
   );
 }

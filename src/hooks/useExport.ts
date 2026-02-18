@@ -15,26 +15,26 @@ import {
 
 export function useExport() {
   const exportCSV = useCallback(() => {
-    const { measurements, referenceValue, referenceUnit, getReference, getReference3D } =
+    const { measurements, referenceValue, referenceUnit, getReference } =
       useMeasurementStore.getState();
-    const csv = generateCSV(measurements, referenceValue, referenceUnit, getReference(), getReference3D());
+    const csv = generateCSV(measurements, referenceValue, referenceUnit, getReference('image'), getReference('model'));
     downloadText(csv, 'measurements.csv', 'text/csv');
     toast.success('CSV exported');
   }, []);
 
   const exportJSON = useCallback(() => {
-    const { measurements, referenceValue, referenceUnit, getReference, getReference3D } =
+    const { measurements, referenceValue, referenceUnit, getReference } =
       useMeasurementStore.getState();
-    const json = generateJSON(measurements, referenceValue, referenceUnit, getReference(), getReference3D());
+    const json = generateJSON(measurements, referenceValue, referenceUnit, getReference('image'), getReference('model'));
     downloadText(json, 'measurements.json', 'application/json');
     toast.success('JSON exported');
   }, []);
 
   const exportClipboard = useCallback(async () => {
-    const { measurements, referenceValue, referenceUnit, getReference, getReference3D } =
+    const { measurements, referenceValue, referenceUnit, getReference } =
       useMeasurementStore.getState();
     const text = generateClipboardText(
-      measurements, referenceValue, referenceUnit, getReference(), getReference3D()
+      measurements, referenceValue, referenceUnit, getReference('image'), getReference('model')
     );
     await navigator.clipboard.writeText(text);
     toast.success('Copied to clipboard');

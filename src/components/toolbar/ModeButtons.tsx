@@ -46,78 +46,45 @@ export function ModeButtons() {
   const setGridSpacing = useUIStore((s) => s.setGridSpacing);
 
   const is3D = viewMode === '3d';
+  const hasTarget = is3D ? !!modelUrl : !!image;
 
   return (
     <div className="flex items-center gap-1">
-      {/* 3D mode buttons */}
-      {is3D && (
-        <>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                variant={mode === 'reference3d' ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => toggleMode('reference3d')}
-                disabled={!modelUrl}
-                className={mode === 'reference3d' ? 'bg-rose-600 hover:bg-rose-700 text-white' : ''}
-              >
-                <Box className="mr-1.5 h-4 w-4" />
-                Reference 3D
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>Set reference on 3D model</TooltipContent>
-          </Tooltip>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                variant={mode === 'measure3d' ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => toggleMode('measure3d')}
-                disabled={!modelUrl}
-                className={mode === 'measure3d' ? 'bg-cyan-600 hover:bg-cyan-700 text-white' : ''}
-              >
-                <Ruler className="mr-1.5 h-4 w-4" />
-                Measure 3D
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>Measure distance on 3D model</TooltipContent>
-          </Tooltip>
-        </>
-      )}
+      {/* Reference & Measure (unified for 2D and 3D) */}
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button
+            variant={mode === 'reference' ? 'default' : 'outline'}
+            size="sm"
+            onClick={() => toggleMode('reference')}
+            disabled={!hasTarget}
+            className={mode === 'reference' ? 'bg-rose-600 hover:bg-rose-700 text-white' : ''}
+          >
+            {is3D ? <Box className="mr-1.5 h-4 w-4" /> : <Ruler className="mr-1.5 h-4 w-4" />}
+            Reference
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent>{is3D ? 'Set reference on 3D model' : 'Draw a reference line (R)'}</TooltipContent>
+      </Tooltip>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button
+            variant={mode === 'measure' ? 'default' : 'outline'}
+            size="sm"
+            onClick={() => toggleMode('measure')}
+            disabled={!hasTarget}
+            className={mode === 'measure' ? 'bg-cyan-600 hover:bg-cyan-700 text-white' : ''}
+          >
+            {is3D ? <Ruler className="mr-1.5 h-4 w-4" /> : <PenLine className="mr-1.5 h-4 w-4" />}
+            Measure
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent>{is3D ? 'Measure distance on 3D model' : 'Draw a measurement line (M)'}</TooltipContent>
+      </Tooltip>
 
-      {/* 2D mode buttons */}
+      {/* 2D-only tools */}
       {!is3D && (
         <>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                variant={mode === 'reference' ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => toggleMode('reference')}
-                disabled={!image}
-                className={mode === 'reference' ? 'bg-rose-600 hover:bg-rose-700 text-white' : ''}
-              >
-                <Ruler className="mr-1.5 h-4 w-4" />
-                Reference
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>Draw a reference line (R)</TooltipContent>
-          </Tooltip>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                variant={mode === 'measure' ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => toggleMode('measure')}
-                disabled={!image}
-                className={mode === 'measure' ? 'bg-cyan-600 hover:bg-cyan-700 text-white' : ''}
-              >
-                <PenLine className="mr-1.5 h-4 w-4" />
-                Measure
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>Draw a measurement line (M)</TooltipContent>
-          </Tooltip>
           <Tooltip>
             <TooltipTrigger asChild>
               <Button

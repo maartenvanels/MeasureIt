@@ -7,8 +7,6 @@ export const DEFAULT_COLORS: Record<string, string> = {
   angle: '#f59e0b',
   area: '#10b981',
   annotation: '#a855f7',
-  reference3d: '#e11d48',
-  measure3d: '#06b6d4',
 };
 
 export function getMeasurementColor(m: AnyMeasurement): string {
@@ -882,7 +880,7 @@ export function renderOverlay(
 
   for (const m of measurements) {
     if (m.type === 'annotation') continue; // rendered as HTML overlay (including leader lines)
-    if (m.type === 'reference3d' || m.type === 'measure3d') continue; // rendered in 3D viewer
+    if ((m.type === 'reference' || m.type === 'measure') && (m as Measurement).surface === 'model') continue; // rendered in 3D viewer
     if (m.type === 'angle') {
       drawAngleMeasurement(ctx, m, m.id === selectedId, transform, labelBoundsOut, true);
     } else if (m.type === 'area') {

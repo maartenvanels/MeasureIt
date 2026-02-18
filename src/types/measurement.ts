@@ -1,12 +1,14 @@
-export type MeasurementType = 'reference' | 'measure' | 'angle' | 'area' | 'annotation' | 'reference3d' | 'measure3d';
+export type MeasurementType = 'reference' | 'measure' | 'angle' | 'area' | 'annotation';
 export type DrawMode =
   | 'none'
   | 'reference' | 'measure' | 'angle'
   | 'area' | 'area-polygon' | 'area-freehand' | 'area-circle-3pt' | 'area-circle-center'
-  | 'annotation'
-  | 'reference3d' | 'measure3d';
+  | 'annotation';
 export type ViewMode = '2d' | '3d';
 export type Unit = 'mm' | 'cm' | 'm' | 'in' | 'px';
+
+/** Which surface a measurement was drawn on */
+export type MeasurementSurface = 'image' | 'model';
 
 export type AreaKind = 'polygon' | 'freehand' | 'circle-3pt' | 'circle-center';
 
@@ -21,7 +23,6 @@ export function modeCategory(mode: DrawMode): string {
   if (isAreaMode(mode)) return 'area';
   if (mode === 'reference' || mode === 'measure' || mode === 'angle') return 'measure';
   if (mode === 'annotation') return 'annotate';
-  if (mode.endsWith('3d')) return '3d';
   return 'other';
 }
 
@@ -36,6 +37,17 @@ export interface Point3D {
   z: number;
 }
 
+/**
+ * Unified measurement for both 2D image and 3D model surfaces.
+ *
+ * For image measurements (surface='image' or undefined):
+ *   start/end are image-space 2D points, pixelLength is the pixel distance.
+ *
+ * For model measurements (surface='model'):
+ *   start3D/end3D are 3D world points, distance is the 3D Euclidean distance.
+ *   pixelLength is set equal to distance for unified calculations.
+ *   start/end are set to {x:0,y:0} (not used for rendering).
+ */
 export interface Measurement {
   id: string;
   type: 'reference' | 'measure';
@@ -49,6 +61,14 @@ export interface Measurement {
   labelOffset?: Point;
   nameLabelOffset?: Point;
   fontSize?: number;
+  /** Which surface this measurement lives on */
+  surface?: MeasurementSurface;
+  /** 3D start point (present when surface='model') */
+  start3D?: Point3D;
+  /** 3D end point (present when surface='model') */
+  end3D?: Point3D;
+  /** 3D Euclidean distance (present when surface='model') */
+  distance?: number;
 }
 
 export interface AngleMeasurement {
@@ -96,6 +116,10 @@ export interface Annotation {
   arrowTarget?: Point;
 }
 
+/**
+ * @deprecated Use Measurement with surface='model' instead.
+ * Kept temporarily for migration of stored data.
+ */
 export interface Measurement3D {
   id: string;
   type: 'reference3d' | 'measure3d';
@@ -111,7 +135,13 @@ export interface Measurement3D {
   nameLabelOffset?: Point;
 }
 
-export type AnyMeasurement = Measurement | AngleMeasurement | AreaMeasurement | Annotation | Measurement3D;
+export type AnyMeasurement = Measurement | AngleMeasurement | AreaMeasurement | Annotation;
+
+/**
+ * Legacy type union that includes Measurement3D for migration.
+ * Use AnyMeasurement for new code.
+ */
+export type LegacyMeasurement = AnyMeasurement | Measurement3D;
 
 export interface LabelBounds {
   measurementId: string;
@@ -145,7 +175,7 @@ export interface MeasurementExport {
 export interface SavedProject {
   id: string;
   name: string;
-  measurements: AnyMeasurement[];
+  measurements: (AnyMeasurement | Measurement3D)[];
   referenceValue: number;
   referenceUnit: Unit;
   updatedAt: number;

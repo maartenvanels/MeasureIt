@@ -2,7 +2,7 @@
 
 import { useCallback } from 'react';
 import { useMeasurementStore } from '@/stores/useMeasurementStore';
-import { SavedProject, AreaMeasurement } from '@/types/measurement';
+import { SavedProject, AreaMeasurement, Measurement, AnyMeasurement } from '@/types/measurement';
 
 const KEY_PREFIX = 'measureit_projects_';
 
@@ -30,6 +30,35 @@ function readIndex(): ProjectIndex {
 
 function writeIndex(index: ProjectIndex): void {
   localStorage.setItem(getIndexKey(), JSON.stringify(index));
+}
+
+/**
+ * Migrate legacy Measurement3D (reference3d/measure3d) to unified Measurement with surface='model'.
+ */
+function migrateLegacy(m: any): AnyMeasurement {
+  if (m.type === 'reference3d' || m.type === 'measure3d') {
+    const type = m.type === 'reference3d' ? 'reference' : 'measure';
+    const distance = m.distance ?? 0;
+    return {
+      id: m.id,
+      type,
+      name: m.name,
+      createdAt: m.createdAt,
+      color: m.color,
+      unitOverride: m.unitOverride,
+      labelOffset: m.labelOffset,
+      nameLabelOffset: m.nameLabelOffset,
+      fontSize: m.fontSize,
+      surface: 'model',
+      start: { x: 0, y: 0 },
+      end: { x: 0, y: 0 },
+      pixelLength: distance,
+      start3D: m.start, // legacy Measurement3D stored Point3D in start/end
+      end3D: m.end,
+      distance,
+    } as Measurement;
+  }
+  return m as AnyMeasurement;
 }
 
 export function useLocalStorage() {
@@ -65,21 +94,22 @@ export function useLocalStorage() {
       const store = useMeasurementStore.getState();
       // Clear current and load saved measurements
       store.clearAll();
-      for (const m of project.measurements) {
+      for (const raw of project.measurements) {
+        // Migration: convert legacy reference3d/measure3d to unified Measurement
+        const m = migrateLegacy(raw);
+
         if (m.type === 'area') {
           // Migration: old projects may lack areaKind
           if (!(m as AreaMeasurement).areaKind) {
             (m as AreaMeasurement).areaKind = 'polygon';
           }
-          store.addArea(m);
+          store.addArea(m as AreaMeasurement);
         } else if (m.type === 'angle') {
           store.addAngle(m);
         } else if (m.type === 'annotation') {
           store.addAnnotation(m);
-        } else if (m.type === 'reference3d' || m.type === 'measure3d') {
-          store.addMeasurement3D(m);
         } else if (m.type === 'reference' || m.type === 'measure') {
-          store.addMeasurement(m);
+          store.addMeasurement(m as Measurement);
         }
       }
       store.setReferenceValue(project.referenceValue);

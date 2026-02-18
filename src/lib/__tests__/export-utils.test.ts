@@ -34,7 +34,7 @@ const annotation: Annotation = {
 describe('generateCSV', () => {
   it('generates header row', () => {
     const csv = generateCSV([], 100, 'mm');
-    expect(csv).toContain('Name,Type,Value,Unit');
+    expect(csv).toContain('Name,Type,Surface,Value,Unit');
   });
 
   it('includes reference measurement', () => {

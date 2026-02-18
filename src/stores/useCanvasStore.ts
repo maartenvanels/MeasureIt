@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { Point, Point3D, ViewTransform, AngleMeasurement, AreaMeasurement, Measurement3D } from '@/types/measurement';
+import { Point, Point3D, ViewTransform, AngleMeasurement, AreaMeasurement } from '@/types/measurement';
 import { pixelDist, snapToAxis, calcAngleDeg, calcPolygonArea, circumscribedCircle, circleArea, simplifyPath } from '@/lib/geometry';
 
 interface CanvasState {
