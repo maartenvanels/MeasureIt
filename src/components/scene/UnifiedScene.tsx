@@ -397,23 +397,19 @@ function ImageSceneContent() {
   const getReference = useMeasurementStore((s) => s.getReference);
 
   const { fitToImage } = useImageCamera();
-  const [fitted, setFitted] = useState(false);
 
   // Wire up scene interaction (snap, drawing, drag)
   const { onPointerDown, onPointerMove, onDoubleClick } = useSceneInteraction();
 
-  // Fit camera to image on first load
+  // Fit camera to image on load.
+  // fitToImage changes once when MapControls registers (controls null → instance),
+  // which re-runs this effect and syncs the controls target.
+  // It does NOT change on resize because we read DOM dimensions at call time.
   useEffect(() => {
-    if (image && !fitted) {
+    if (image) {
       fitToImage(image.width, image.height);
-      setFitted(true);
     }
-  }, [image, fitted, fitToImage]);
-
-  // Reset fit when image changes
-  useEffect(() => {
-    setFitted(false);
-  }, [image]);
+  }, [image, fitToImage]);
 
   const isMeasuring = mode !== 'none';
 

@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useEffect, useCallback } from 'react';
+import { useCallback } from 'react';
 import { useThree } from '@react-three/fiber';
 import { MapControls, OrbitControls } from '@react-three/drei';
 import * as THREE from 'three';
@@ -49,26 +49,45 @@ export function SceneControls({ disabled = false, mode }: SceneControlsProps) {
 
 /**
  * Sets up an orthographic camera looking at the image plane.
- * Call once when image is loaded to fit the image in view.
+ * Call fitToImage once when image is loaded to center and fit the image in view.
+ *
+ * Key detail: MapControls has its own `target` that determines where the camera
+ * looks. We must sync it with the camera position so the camera looks straight
+ * down -Z at the image plane (not towards the default origin).
  */
 export function useImageCamera() {
-  const { camera, size } = useThree();
+  // gl and camera are stable references. controls changes once (null → MapControls).
+  // We read gl.domElement dimensions at call time to avoid re-fitting on resize.
+  const { camera, gl, controls } = useThree();
 
   const fitToImage = useCallback(
     (imageWidth: number, imageHeight: number) => {
       if (!(camera instanceof THREE.OrthographicCamera)) return;
 
+      // Read actual canvas dimensions at call time (not reactive)
+      const rect = gl.domElement.getBoundingClientRect();
+      if (rect.width === 0 || rect.height === 0) return;
+
       // Calculate zoom so image fills ~90% of viewport
-      const zoomX = size.width / imageWidth;
-      const zoomY = size.height / imageHeight;
+      const zoomX = rect.width / imageWidth;
+      const zoomY = rect.height / imageHeight;
       const zoom = Math.min(zoomX, zoomY) * 0.9;
 
+      const cx = imageWidth / 2;
+      const cy = -imageHeight / 2;
+
       camera.zoom = zoom;
-      // Center camera on image center (image is at x=w/2, y=-h/2)
-      camera.position.set(imageWidth / 2, -imageHeight / 2, 100);
+      camera.position.set(cx, cy, 100);
+      camera.lookAt(cx, cy, 0);
       camera.updateProjectionMatrix();
+
+      // Sync MapControls target so the camera looks straight down at the image
+      if (controls && 'target' in controls) {
+        (controls.target as THREE.Vector3).set(cx, cy, 0);
+        (controls as unknown as { update: () => void }).update();
+      }
     },
-    [camera, size]
+    [camera, gl, controls]
   );
 
   return { fitToImage };
