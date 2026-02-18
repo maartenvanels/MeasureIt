@@ -1,36 +1,71 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# MeasureIt
 
-## Getting Started
+**Measure anything from a photo.** Set one known reference dimension, then measure distances, angles, and areas — all in your browser.
 
-First, run the development server:
+> [Try it live](https://measure-it-omega.vercel.app) — no signup, no install, your data never leaves your browser.
+
+## Features
+
+- **Reference-based scaling** — draw a line over a known dimension, and all other measurements are calculated in real-world units
+- **Distance measurements** — measure lengths with automatic unit conversion (mm, cm, m, in)
+- **Angle measurements** — three-point angle calculation
+- **Area measurements** — polygon-based area with quadratic unit scaling
+- **Annotations** — text labels with optional leader arrows, supports Markdown and LaTeX
+- **Grid overlay** — configurable grid with snap-to-grid during drawing
+- **Image cropping** — crop to focus on a specific region
+- **Export** — CSV, JSON, clipboard text, and annotated PNG
+- **Undo/redo** — full 50-level history
+- **Keyboard shortcuts** — R, M, A, P, T for modes; Shift to constrain to axis
+- **Touch support** — pinch-to-zoom, tap-to-measure on mobile
+- **PWA** — installable, works offline
+
+## Quick Start
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+# Prerequisites: Bun 1.3.5+
+bun install
+bun run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000) in your browser.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Tech Stack
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+- [Next.js 16](https://nextjs.org/) (App Router) + [React 19](https://react.dev/)
+- [Zustand 5](https://zustand.docs.pmnd.rs/) for state management
+- [Tailwind CSS 4](https://tailwindcss.com/) + [shadcn/ui](https://ui.shadcn.com/)
+- Canvas 2D API (dual-layer rendering)
+- [KaTeX](https://katex.org/) for LaTeX rendering
+- [Vitest](https://vitest.dev/) for testing
 
-## Learn More
+## Project Structure
 
-To learn more about Next.js, take a look at the following resources:
+```
+src/
+├── app/            # Next.js App Router pages
+├── components/     # React components (canvas, toolbar, sidebar, dialogs, ui)
+├── hooks/          # Custom React hooks (canvas interaction, rendering, export)
+├── lib/            # Utilities (geometry, calculations, canvas rendering, export)
+├── stores/         # Zustand stores (measurements, UI, canvas)
+└── types/          # TypeScript type definitions
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Three Zustand stores manage all state:
+- **useMeasurementStore** — measurements, reference value/unit, undo/redo
+- **useUIStore** — drawing mode, UI state, grid settings
+- **useCanvasStore** — image, canvas transform, drawing lifecycle
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Testing
 
-## Deploy on Vercel
+```bash
+bun run test          # Run all tests
+bun run test:watch    # Watch mode
+```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Contributing
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Contributions are welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
+
+## License
+
+[MIT](LICENSE) — free for personal and commercial use.
