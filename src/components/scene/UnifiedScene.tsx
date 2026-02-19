@@ -323,39 +323,56 @@ function ImageMeasurementLayer() {
   const openAnnotationEditor = useUIStore((s) => s.openAnnotationEditor);
 
   const measurements = useMeasurementStore((s) => s.measurements);
-  const referenceValue = useMeasurementStore((s) => s.referenceValue);
-  const referenceUnit = useMeasurementStore((s) => s.referenceUnit);
+  const globalRefValue = useMeasurementStore((s) => s.referenceValue);
+  const globalRefUnit = useMeasurementStore((s) => s.referenceUnit);
   const getReference = useMeasurementStore((s) => s.getReference);
 
+  // Per-object reference: resolve from scene object when surfaceId is present
+  const getRefForMeasurement = useCallback((m: AnyMeasurement) => {
+    const obj = m.surfaceId ? useSceneObjectStore.getState().getObject(m.surfaceId) : undefined;
+    const refValue = obj?.referenceValue ?? globalRefValue;
+    const refUnit = obj?.referenceUnit ?? globalRefUnit;
+    const ref = getReference('image', m.surfaceId);
+    return { ref, refValue, refUnit };
+  }, [getReference, globalRefValue, globalRefUnit]);
+
   const getLabel = useCallback((m: AnyMeasurement): string => {
-    const ref = getReference();
+    const { ref, refValue, refUnit } = getRefForMeasurement(m);
     if (m.type === 'reference') {
-      return referenceValue > 0 ? `${referenceValue} ${referenceUnit} (ref)` : `${(m as Measurement).pixelLength.toFixed(1)} px`;
+      return refValue > 0 ? `${refValue} ${refUnit} (ref)` : `${(m as Measurement).pixelLength.toFixed(1)} px`;
     }
     if (m.type === 'measure') {
-      const result = calcRealDistance((m as Measurement).pixelLength, ref, referenceValue, referenceUnit, (m as Measurement).unitOverride);
+      const result = calcRealDistance((m as Measurement).pixelLength, ref, refValue, refUnit, (m as Measurement).unitOverride);
       return result ?? `${(m as Measurement).pixelLength.toFixed(1)} px`;
     }
     if (m.type === 'area') {
       const area = m as AreaMeasurementType;
-      const result = calcRealArea(area.pixelArea, ref, referenceValue, referenceUnit, area.unitOverride);
+      const result = calcRealArea(area.pixelArea, ref, refValue, refUnit, area.unitOverride);
       return result ?? `${area.pixelArea.toFixed(1)} px²`;
     }
     return '';
-  }, [getReference, referenceValue, referenceUnit]);
+  }, [getRefForMeasurement]);
+
+  // In-progress label uses the active object's reference
+  const activeObjectId = useSceneObjectStore((s) => s.activeObjectId);
+  const activeObject = useSceneObjectStore((s) =>
+    s.activeObjectId ? s.objects.find((o) => o.id === s.activeObjectId) : undefined
+  );
+  const activeRefValue = activeObject?.referenceValue ?? globalRefValue;
+  const activeRefUnit = activeObject?.referenceUnit ?? globalRefUnit;
 
   const inProgressLabel = useMemo(() => {
     if (!isDrawing || !drawStart || !drawCurrent) return '';
     const dx = drawCurrent.x - drawStart.x;
     const dy = drawCurrent.y - drawStart.y;
     const dist = Math.sqrt(dx * dx + dy * dy);
-    const ref = getReference();
-    if (ref && referenceValue > 0) {
-      const ratio = referenceValue / ref.pixelLength;
-      return `${(dist * ratio).toFixed(2)} ${referenceUnit}`;
+    const ref = getReference('image', activeObjectId ?? undefined);
+    if (ref && activeRefValue > 0) {
+      const ratio = activeRefValue / ref.pixelLength;
+      return `${(dist * ratio).toFixed(2)} ${activeRefUnit}`;
     }
     return `${dist.toFixed(1)} px`;
-  }, [isDrawing, drawStart, drawCurrent, getReference, referenceValue, referenceUnit]);
+  }, [isDrawing, drawStart, drawCurrent, getReference, activeObjectId, activeRefValue, activeRefUnit]);
 
   const measurements2D = useMemo(() =>
     measurements.filter(m => {
@@ -467,8 +484,8 @@ function ModelMeasurementLayer({ modelScale }: { modelScale: number }) {
   const showAxisDistances = useUIStore((s) => s.show3DAxisDistances);
 
   const measurements = useMeasurementStore((s) => s.measurements);
-  const referenceValue = useMeasurementStore((s) => s.referenceValue);
-  const referenceUnit = useMeasurementStore((s) => s.referenceUnit);
+  const globalRefValue = useMeasurementStore((s) => s.referenceValue);
+  const globalRefUnit = useMeasurementStore((s) => s.referenceUnit);
   const getReference = useMeasurementStore((s) => s.getReference);
 
   const markerSize = modelScale * 0.005;
@@ -484,14 +501,17 @@ function ModelMeasurementLayer({ modelScale }: { modelScale: number }) {
 
   const getLabel = useCallback(
     (m: Measurement) => {
+      const obj = m.surfaceId ? useSceneObjectStore.getState().getObject(m.surfaceId) : undefined;
+      const refValue = obj?.referenceValue ?? globalRefValue;
+      const refUnit = obj?.referenceUnit ?? globalRefUnit;
       if (m.type === 'reference') {
-        return referenceValue > 0 ? `${referenceValue} ${referenceUnit} (ref)` : (m.distance?.toFixed(4) ?? '');
+        return refValue > 0 ? `${refValue} ${refUnit} (ref)` : (m.distance?.toFixed(4) ?? '');
       }
-      const ref = getReference('model');
-      const result = calcRealDistance(m.pixelLength, ref, referenceValue, referenceUnit, m.unitOverride);
+      const ref = getReference('model', m.surfaceId);
+      const result = calcRealDistance(m.pixelLength, ref, refValue, refUnit, m.unitOverride);
       return result ?? (m.distance?.toFixed(4) ?? '');
     },
-    [getReference, referenceValue, referenceUnit]
+    [getReference, globalRefValue, globalRefUnit]
   );
 
   return (

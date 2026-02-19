@@ -4,36 +4,61 @@ import { drawMeasurementLine, drawAngleMeasurement, drawAreaMeasurement, drawCir
 import { calcRealDistance, calcRealArea } from './calculations';
 import { hasLatex, renderNameLabelImage } from './latex-export';
 
-export function generateCSV(
-  measurements: AnyMeasurement[],
+/** Resolver function that returns the reference measurement + scale for a given measurement */
+export type RefResolver = (m: AnyMeasurement) => {
+  ref: Measurement | undefined;
+  refValue: number;
+  refUnit: Unit;
+  objectName?: string;
+};
+
+/** Build a simple (legacy) resolver from global values */
+export function buildSimpleResolver(
   refValue: number,
   refUnit: Unit,
   imageRef?: Measurement,
-  modelRef?: Measurement
+  modelRef?: Measurement,
+): RefResolver {
+  return (m) => {
+    const surface = (m.type === 'reference' || m.type === 'measure')
+      ? ((m as Measurement).surface ?? 'image')
+      : 'image';
+    return {
+      ref: surface === 'model' ? modelRef : imageRef,
+      refValue,
+      refUnit,
+    };
+  };
+}
+
+export function generateCSV(
+  measurements: AnyMeasurement[],
+  resolve: RefResolver,
 ): string {
-  let csv = `Name,Type,Surface,Value,Unit,Pixel Length,Angle (deg),Pixel Area,3D Distance\n`;
+  let csv = `Name,Type,Object,Surface,Value,Unit,Pixel Length,Angle (deg),Pixel Area,3D Distance\n`;
   for (const m of measurements) {
+    const { ref, refValue, refUnit, objectName } = resolve(m);
+    const objCol = objectName ? `"${objectName}"` : '';
     if (m.type === 'annotation') {
       const content = (m as Annotation).content.replace(/"/g, '""').slice(0, 100);
-      csv += `"${content}",annotation,,,,,,, \n`;
+      csv += `"${content}",annotation,${objCol},,,,,,,\n`;
     } else if (m.type === 'area') {
       const area = m as AreaMeasurement;
       const unit = area.unitOverride ?? refUnit;
-      const realArea = calcRealArea(area.pixelArea, imageRef, refValue, refUnit, area.unitOverride);
-      csv += `"${m.name}",area,image,"${realArea ?? ''}",${unit},,,"${area.pixelArea.toFixed(2)}",\n`;
+      const realArea = calcRealArea(area.pixelArea, ref, refValue, refUnit, area.unitOverride);
+      csv += `"${m.name}",area,${objCol},image,"${realArea ?? ''}",${unit},,,"${area.pixelArea.toFixed(2)}",\n`;
     } else if (m.type === 'angle') {
-      csv += `"${m.name}",angle,image,"${m.angleDeg.toFixed(2)}°",deg,,,,,\n`;
+      csv += `"${m.name}",angle,${objCol},image,"${m.angleDeg.toFixed(2)}°",deg,,,,\n`;
     } else {
       const meas = m as Measurement;
       const surface = meas.surface ?? 'image';
-      const ref = surface === 'model' ? modelRef : imageRef;
       const unit = meas.unitOverride ?? refUnit;
       const real =
         m.type === 'reference'
           ? `${refValue}`
           : (calcRealDistance(meas.pixelLength, ref, refValue, refUnit, meas.unitOverride)?.replace(` ${unit}`, '') ?? '');
       const dist3D = meas.distance != null ? meas.distance.toFixed(4) : '';
-      csv += `"${m.name}",${m.type},${surface},"${real}",${unit},${meas.pixelLength.toFixed(2)},,,${dist3D}\n`;
+      csv += `"${m.name}",${m.type},${objCol},${surface},"${real}",${unit},${meas.pixelLength.toFixed(2)},,,${dist3D}\n`;
     }
   }
   return csv;
@@ -41,12 +66,10 @@ export function generateCSV(
 
 export function generateJSON(
   measurements: AnyMeasurement[],
-  refValue: number,
-  refUnit: Unit,
-  imageRef?: Measurement,
-  modelRef?: Measurement
+  resolve: RefResolver,
 ): string {
   const data = measurements.map((m) => {
+    const { ref, refValue, refUnit, objectName } = resolve(m);
     if (m.type === 'annotation') {
       const ann = m as Annotation;
       return {
@@ -54,15 +77,17 @@ export function generateJSON(
         content: ann.content,
         position: { x: Math.round(ann.position.x), y: Math.round(ann.position.y) },
         color: ann.color,
+        ...(objectName ? { object: objectName } : {}),
         ...(ann.arrowTarget ? { arrowTarget: { x: Math.round(ann.arrowTarget.x), y: Math.round(ann.arrowTarget.y) } } : {}),
       };
     }
     if (m.type === 'area') {
       const area = m as AreaMeasurement;
-      const realArea = calcRealArea(area.pixelArea, imageRef, refValue, refUnit, area.unitOverride);
+      const realArea = calcRealArea(area.pixelArea, ref, refValue, refUnit, area.unitOverride);
       return {
         name: m.name,
         type: 'area' as const,
+        ...(objectName ? { object: objectName } : {}),
         areaKind: area.areaKind,
         pixelArea: Math.round(area.pixelArea * 100) / 100,
         realArea: realArea ?? null,
@@ -76,6 +101,7 @@ export function generateJSON(
       return {
         name: m.name,
         type: 'angle' as const,
+        ...(objectName ? { object: objectName } : {}),
         angleDeg: Math.round(m.angleDeg * 100) / 100,
         coordinates: {
           vertex: { x: Math.round(m.vertex.x), y: Math.round(m.vertex.y) },
@@ -86,7 +112,6 @@ export function generateJSON(
     }
     const meas = m as Measurement;
     const surface = meas.surface ?? 'image';
-    const ref = surface === 'model' ? modelRef : imageRef;
     const realValue =
       m.type === 'reference'
         ? refValue
@@ -94,6 +119,7 @@ export function generateJSON(
     return {
       name: m.name,
       type: m.type,
+      ...(objectName ? { object: objectName } : {}),
       surface,
       pixelLength: Math.round(meas.pixelLength * 100) / 100,
       realValue: realValue ? Math.round(realValue * 100) / 100 : null,
@@ -119,33 +145,31 @@ export function generateJSON(
 
 export function generateClipboardText(
   measurements: AnyMeasurement[],
-  refValue: number,
-  refUnit: Unit,
-  imageRef?: Measurement,
-  modelRef?: Measurement
+  resolve: RefResolver,
 ): string {
   let text = 'Measurements:\n';
   for (const m of measurements) {
+    const { ref, refValue, refUnit, objectName } = resolve(m);
+    const prefix = objectName ? `[${objectName}] ` : '';
     if (m.type === 'annotation') {
       const content = (m as Annotation).content.slice(0, 60).replace(/\n/g, ' ');
-      text += `  [Note] ${content}\n`;
+      text += `  ${prefix}[Note] ${content}\n`;
     } else if (m.type === 'area') {
       const area = m as AreaMeasurement;
-      const val = calcRealArea(area.pixelArea, imageRef, refValue, refUnit, area.unitOverride) ?? `${area.pixelArea.toFixed(0)} px\u00B2`;
-      text += `  ${m.name}: ${val}\n`;
+      const val = calcRealArea(area.pixelArea, ref, refValue, refUnit, area.unitOverride) ?? `${area.pixelArea.toFixed(0)} px\u00B2`;
+      text += `  ${prefix}${m.name}: ${val}\n`;
     } else if (m.type === 'angle') {
-      text += `  ${m.name}: ${m.angleDeg.toFixed(1)}\u00B0\n`;
+      text += `  ${prefix}${m.name}: ${m.angleDeg.toFixed(1)}\u00B0\n`;
     } else {
       const meas = m as Measurement;
       const surface = meas.surface ?? 'image';
-      const ref = surface === 'model' ? modelRef : imageRef;
       const suffix = surface === 'model' ? ' (3D)' : '';
       const val =
         m.type === 'reference'
           ? `${refValue} ${refUnit} (${surface === 'model' ? '3D ' : ''}reference)`
           : (calcRealDistance(meas.pixelLength, ref, refValue, refUnit, meas.unitOverride) ??
             `${meas.pixelLength.toFixed(1)} px`);
-      text += `  ${m.name}${suffix}: ${val}\n`;
+      text += `  ${prefix}${m.name}${suffix}: ${val}\n`;
     }
   }
   return text;
@@ -204,9 +228,7 @@ function getExportNameLabelPos(m: AnyMeasurement): { x: number; y: number } | nu
 export async function renderAnnotatedImage(
   image: HTMLImageElement,
   measurements: AnyMeasurement[],
-  refValue: number,
-  refUnit: Unit,
-  reference?: Measurement
+  resolve: RefResolver,
 ): Promise<Blob> {
   const canvas = document.createElement('canvas');
   canvas.width = image.width;
@@ -219,6 +241,7 @@ export async function renderAnnotatedImage(
 
   // Draw all measurements with skipNameLabel=true (we render names separately)
   for (const m of measurements) {
+    const { ref, refValue, refUnit } = resolve(m);
     if (m.type === 'annotation') {
       const ann = m as Annotation;
       const color = ann.color ?? '#a855f7';
@@ -232,7 +255,7 @@ export async function renderAnnotatedImage(
       }
     } else if (m.type === 'area') {
       const area = m as AreaMeasurement;
-      const label = calcRealArea(area.pixelArea, reference, refValue, refUnit, area.unitOverride) ?? `${area.pixelArea.toFixed(0)} px\u00B2`;
+      const label = calcRealArea(area.pixelArea, ref, refValue, refUnit, area.unitOverride) ?? `${area.pixelArea.toFixed(0)} px\u00B2`;
       if (area.areaKind === 'circle-3pt' || area.areaKind === 'circle-center') {
         drawCircleAreaMeasurement(ctx, area, false, transform, label, undefined, true);
       } else if (area.areaKind === 'freehand') {
@@ -247,7 +270,7 @@ export async function renderAnnotatedImage(
       const label =
         m.type === 'reference'
           ? `${refValue} ${refUnit} (ref)`
-          : (calcRealDistance(meas.pixelLength, reference, refValue, refUnit, meas.unitOverride) ??
+          : (calcRealDistance(meas.pixelLength, ref, refValue, refUnit, meas.unitOverride) ??
             `${meas.pixelLength.toFixed(1)} px`);
       drawMeasurementLine(ctx, meas, false, transform, label, m.name, undefined, true);
     }

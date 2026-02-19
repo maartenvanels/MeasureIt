@@ -4,6 +4,7 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import { Eye, EyeOff, Lock, Unlock } from 'lucide-react';
 import type { Measurement, AreaMeasurement, Annotation, AnyMeasurement } from '@/types/measurement';
 import { useMeasurementStore } from '@/stores/useMeasurementStore';
+import { useSceneObjectStore } from '@/stores/useSceneObjectStore';
 import { useUIStore } from '@/stores/useUIStore';
 import { calcRealDistance, calcRealArea } from '@/lib/calculations';
 import { getMeasurementColor } from '@/lib/canvas-rendering';
@@ -13,10 +14,22 @@ interface Props {
 }
 
 function useDisplayValue(m: AnyMeasurement): string {
-  const referenceValue = useMeasurementStore((s) => s.referenceValue);
-  const referenceUnit = useMeasurementStore((s) => s.referenceUnit);
+  const globalRefValue = useMeasurementStore((s) => s.referenceValue);
+  const globalRefUnit = useMeasurementStore((s) => s.referenceUnit);
   const isModelSurface = (m.type === 'reference' || m.type === 'measure') && (m as Measurement).surface === 'model';
-  const reference = useMeasurementStore((s) => s.getReference(isModelSurface ? 'model' : 'image'));
+  const surfaceId = m.surfaceId;
+
+  // Per-object reference: look up the SceneObject for this measurement
+  const sceneObject = useSceneObjectStore((s) =>
+    surfaceId ? s.objects.find((o) => o.id === surfaceId) : undefined
+  );
+  const referenceValue = sceneObject?.referenceValue ?? globalRefValue;
+  const referenceUnit = sceneObject?.referenceUnit ?? globalRefUnit;
+
+  // Get the reference measurement for this specific object (or surface fallback)
+  const reference = useMeasurementStore((s) =>
+    s.getReference(isModelSurface ? 'model' : 'image', surfaceId)
+  );
 
   if (m.type === 'annotation') {
     return (m as Annotation).content.replace(/[#*_~`$\\]/g, '').slice(0, 30) || 'Empty';
