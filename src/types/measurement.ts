@@ -69,6 +69,12 @@ export interface Measurement {
   end3D?: Point3D;
   /** 3D Euclidean distance (present when surface='model') */
   distance?: number;
+  /** Hidden in scene (undefined = visible) */
+  visible?: boolean;
+  /** Locked from editing (undefined = unlocked) */
+  locked?: boolean;
+  /** Links to a specific SceneObject.id */
+  surfaceId?: string;
 }
 
 export interface AngleMeasurement {
@@ -84,6 +90,12 @@ export interface AngleMeasurement {
   labelOffset?: Point;
   nameLabelOffset?: Point;
   fontSize?: number;
+  /** Hidden in scene (undefined = visible) */
+  visible?: boolean;
+  /** Locked from editing (undefined = unlocked) */
+  locked?: boolean;
+  /** Links to a specific SceneObject.id */
+  surfaceId?: string;
 }
 
 export interface AreaMeasurement {
@@ -102,6 +114,12 @@ export interface AreaMeasurement {
   // Circle-specific fields (only for circle-3pt and circle-center)
   center?: Point;
   radius?: number;
+  /** Hidden in scene (undefined = visible) */
+  visible?: boolean;
+  /** Locked from editing (undefined = unlocked) */
+  locked?: boolean;
+  /** Links to a specific SceneObject.id */
+  surfaceId?: string;
 }
 
 export interface Annotation {
@@ -114,6 +132,12 @@ export interface Annotation {
   createdAt: number;
   fontSize?: number;
   arrowTarget?: Point;
+  /** Hidden in scene (undefined = visible) */
+  visible?: boolean;
+  /** Locked from editing (undefined = unlocked) */
+  locked?: boolean;
+  /** Links to a specific SceneObject.id */
+  surfaceId?: string;
 }
 
 /**
@@ -136,6 +160,16 @@ export interface Measurement3D {
 }
 
 export type AnyMeasurement = Measurement | AngleMeasurement | AreaMeasurement | Annotation;
+
+/** Check if measurement is visible (undefined defaults to true) */
+export function isMeasurementVisible(m: AnyMeasurement): boolean {
+  return m.visible !== false;
+}
+
+/** Check if measurement is locked (undefined defaults to false) */
+export function isMeasurementLocked(m: AnyMeasurement): boolean {
+  return m.locked === true;
+}
 
 /**
  * Legacy type union that includes Measurement3D for migration.
@@ -178,5 +212,15 @@ export interface SavedProject {
   measurements: (AnyMeasurement | Measurement3D)[];
   referenceValue: number;
   referenceUnit: Unit;
+  updatedAt: number;
+}
+
+/** V2 project format with multi-object scene support */
+export interface SavedProjectV2 {
+  version: 2;
+  id: string;
+  name: string;
+  objects: import('@/types/scene-object').SerializedSceneObject[];
+  measurements: AnyMeasurement[];
   updatedAt: number;
 }

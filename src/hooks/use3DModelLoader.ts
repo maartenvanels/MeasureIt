@@ -2,7 +2,7 @@
 
 import { useCallback } from 'react';
 import { useCanvasStore } from '@/stores/useCanvasStore';
-import { useUIStore } from '@/stores/useUIStore';
+import { useSceneObjectStore } from '@/stores/useSceneObjectStore';
 
 const MODEL_EXTENSIONS: Record<string, 'glb' | 'stl'> = {
   '.glb': 'glb',
@@ -21,7 +21,7 @@ export function isModelFile(file: File): boolean {
 
 export function use3DModelLoader() {
   const setModel = useCanvasStore((s) => s.setModel);
-  const setViewMode = useUIStore((s) => s.setViewMode);
+  const addModel = useSceneObjectStore((s) => s.addModel);
 
   const loadFromFile = useCallback(
     (file: File) => {
@@ -29,10 +29,11 @@ export function use3DModelLoader() {
       if (!fileType) return;
 
       const url = URL.createObjectURL(file);
+      // Bridge: populate both stores during migration
       setModel(url, file.name, fileType);
-      setViewMode('3d');
+      addModel(url, file.name, fileType);
     },
-    [setModel, setViewMode]
+    [setModel, addModel]
   );
 
   const loadFromDrop = useCallback(

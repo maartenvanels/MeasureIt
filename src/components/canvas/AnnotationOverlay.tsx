@@ -19,7 +19,7 @@ export function AnnotationOverlay() {
   const openAnnotationEditor = useUIStore((s) => s.openAnnotationEditor);
 
   const annotations = measurements.filter(
-    (m): m is Annotation => m.type === 'annotation'
+    (m): m is Annotation => m.type === 'annotation' && m.visible !== false
   );
 
   const dragRef = useRef<{

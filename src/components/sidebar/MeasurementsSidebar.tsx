@@ -1,7 +1,7 @@
 'use client';
 
 import { useUIStore } from '@/stores/useUIStore';
-import { MeasurementList } from './MeasurementList';
+import { SceneBrowser } from './SceneBrowser';
 import { ShortcutsFooter } from './ShortcutsFooter';
 
 export function MeasurementsSidebar() {
@@ -14,10 +14,10 @@ export function MeasurementsSidebar() {
     <aside className="flex flex-col border-l border-border bg-card flex-shrink-0" style={{ width: sidebarWidth }}>
       <div className="border-b border-border px-4 py-3">
         <h2 className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-          Measurements
+          Scene Browser
         </h2>
       </div>
-      <MeasurementList />
+      <SceneBrowser />
       <ShortcutsFooter />
     </aside>
   );

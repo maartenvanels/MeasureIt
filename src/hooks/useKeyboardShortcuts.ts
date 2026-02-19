@@ -83,8 +83,11 @@ export function useKeyboardShortcuts() {
         case 'delete':
         case 'backspace':
           if (selectedMeasurementId) {
-            removeMeasurement(selectedMeasurementId);
-            selectMeasurement(null);
+            const m = useMeasurementStore.getState().measurements.find(x => x.id === selectedMeasurementId);
+            if (m && !m.locked) {
+              removeMeasurement(selectedMeasurementId);
+              selectMeasurement(null);
+            }
           }
           break;
       }

@@ -127,7 +127,7 @@ export function useCanvasInteraction(
       if (e.button === 0 && mode === 'none') {
         const transform = canvasStore.getState().transform;
         const annotations = measurementStore.getState().measurements.filter(
-          (m): m is Annotation => m.type === 'annotation' && !!m.arrowTarget
+          (m): m is Annotation => m.type === 'annotation' && !!m.arrowTarget && !m.locked
         );
         for (const ann of annotations) {
           const target = ann.arrowTarget!;
@@ -154,6 +154,7 @@ export function useCanvasInteraction(
           (m): m is Measurement => m.type === 'reference' || m.type === 'measure'
         );
         for (const line of lines) {
+          if (line.locked) continue;
           for (const ep of ['start', 'end'] as const) {
             const pt = line[ep];
             const screenPt = imageToScreen(pt.x, pt.y, transform);
@@ -181,7 +182,7 @@ export function useCanvasInteraction(
           const lb = labelBoundsRef.current[i];
           if (mx >= lb.x && mx <= lb.x + lb.w && my >= lb.y && my <= lb.y + lb.h) {
             const m = measurementStore.getState().measurements.find((m) => m.id === lb.measurementId);
-            if (m && m.type !== 'annotation') {
+            if (m && m.type !== 'annotation' && !m.locked) {
               const offsetField = lb.labelType === 'value' ? 'labelOffset' : 'nameLabelOffset';
               const currentOffset = (m as unknown as Record<string, unknown>)[offsetField] as { x: number; y: number } | undefined;
               labelDrag.current = {

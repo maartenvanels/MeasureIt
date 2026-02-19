@@ -6,6 +6,7 @@ import * as THREE from 'three';
 import { useCanvasStore } from '@/stores/useCanvasStore';
 import { useUIStore } from '@/stores/useUIStore';
 import { useMeasurementStore } from '@/stores/useMeasurementStore';
+import { useSceneObjectStore } from '@/stores/useSceneObjectStore';
 import { hitToImage, snapToAxis, snapToGrid, pixelDist, getAllEndpoints } from '@/lib/geometry';
 import { Point, Annotation, Measurement, AnyMeasurement } from '@/types/measurement';
 
@@ -238,7 +239,9 @@ export function useSceneInteraction() {
         const result = useCanvasStore.getState().finishFreehand();
         if (result) {
           const mStore = useMeasurementStore.getState();
-          result.name = `Area ${mStore.getAreaCount() + 1}`;
+          const activeId = useSceneObjectStore.getState().activeObjectId;
+          result.name = `Area ${mStore.getAreaCount(activeId ?? undefined) + 1}`;
+          if (activeId) result.surfaceId = activeId;
           mStore.addArea(result);
         }
         stopDomTracking();
@@ -251,10 +254,11 @@ export function useSceneInteraction() {
         if (result) {
           const mode = useUIStore.getState().mode;
           const mStore = useMeasurementStore.getState();
+          const activeId = useSceneObjectStore.getState().activeObjectId;
           const name =
             mode === 'reference'
               ? 'Reference'
-              : `Measurement ${mStore.getMeasureCount() + 1}`;
+              : `Measurement ${mStore.getMeasureCount('image', activeId ?? undefined) + 1}`;
           mStore.addMeasurement({
             id: crypto.randomUUID(),
             type: mode as 'reference' | 'measure',
@@ -263,6 +267,7 @@ export function useSceneInteraction() {
             pixelLength: result.pixelLength,
             name,
             createdAt: Date.now(),
+            surfaceId: activeId ?? undefined,
           });
         }
         stopDomTracking();
@@ -373,7 +378,9 @@ export function useSceneInteraction() {
           if (pixelDist(snapped, state.areaPoints[0]) < threshold) {
             const result = state.finishArea();
             if (result) {
-              result.name = `Area ${useMeasurementStore.getState().getAreaCount() + 1}`;
+              const activeId = useSceneObjectStore.getState().activeObjectId;
+              result.name = `Area ${useMeasurementStore.getState().getAreaCount(activeId ?? undefined) + 1}`;
+              if (activeId) result.surfaceId = activeId;
               useMeasurementStore.getState().addArea(result);
             }
             return;
@@ -400,7 +407,9 @@ export function useSceneInteraction() {
         if (state.circle3PtPoints.length >= 2) {
           const result = useCanvasStore.getState().finishCircle3Pt();
           if (result) {
-            result.name = `Area ${useMeasurementStore.getState().getAreaCount() + 1}`;
+            const activeId = useSceneObjectStore.getState().activeObjectId;
+            result.name = `Area ${useMeasurementStore.getState().getAreaCount(activeId ?? undefined) + 1}`;
+            if (activeId) result.surfaceId = activeId;
             useMeasurementStore.getState().addArea(result);
           }
         }
@@ -416,7 +425,9 @@ export function useSceneInteraction() {
         } else {
           const result = state.finishCircleCenter(snapped);
           if (result) {
-            result.name = `Area ${useMeasurementStore.getState().getAreaCount() + 1}`;
+            const activeId = useSceneObjectStore.getState().activeObjectId;
+            result.name = `Area ${useMeasurementStore.getState().getAreaCount(activeId ?? undefined) + 1}`;
+            if (activeId) result.surfaceId = activeId;
             useMeasurementStore.getState().addArea(result);
           }
         }
@@ -430,7 +441,9 @@ export function useSceneInteraction() {
         if (!state.angleStep) state.startAngle();
         const result = useCanvasStore.getState().placeAnglePoint(snapped);
         if (result) {
-          result.name = `Angle ${useMeasurementStore.getState().getAngleCount() + 1}`;
+          const activeId = useSceneObjectStore.getState().activeObjectId;
+          result.name = `Angle ${useMeasurementStore.getState().getAngleCount(activeId ?? undefined) + 1}`;
+          if (activeId) result.surfaceId = activeId;
           useMeasurementStore.getState().addAngle(result);
           useCanvasStore.getState().startAngle();
         }
@@ -500,7 +513,9 @@ export function useSceneInteraction() {
         e.stopPropagation();
         const result = state.finishArea();
         if (result) {
-          result.name = `Area ${useMeasurementStore.getState().getAreaCount() + 1}`;
+          const activeId = useSceneObjectStore.getState().activeObjectId;
+          result.name = `Area ${useMeasurementStore.getState().getAreaCount(activeId ?? undefined) + 1}`;
+          if (activeId) result.surfaceId = activeId;
           useMeasurementStore.getState().addArea(result);
         }
       }

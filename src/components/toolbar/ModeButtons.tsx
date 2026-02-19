@@ -1,6 +1,6 @@
 'use client';
 
-import { Ruler, PenLine, TriangleRight, Hexagon, StickyNote, Crop, Grid3x3, ChevronDown, Box, Pencil, Circle, CircleDot } from 'lucide-react';
+import { Ruler, PenLine, TriangleRight, Hexagon, StickyNote, Crop, Grid3x3, ChevronDown, Box, Pencil, Circle, CircleDot, Move, RotateCcw, Maximize } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Tooltip,
@@ -18,6 +18,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { useUIStore } from '@/stores/useUIStore';
 import { useCanvasStore } from '@/stores/useCanvasStore';
+import { useSceneObjectStore } from '@/stores/useSceneObjectStore';
 import { ToolGroupButton, type ToolOption } from './ToolGroupButton';
 import { DrawMode } from '@/types/measurement';
 
@@ -32,7 +33,6 @@ const GRID_PRESETS = [10, 25, 50, 100, 200, 500];
 
 export function ModeButtons() {
   const mode = useUIStore((s) => s.mode);
-  const viewMode = useUIStore((s) => s.viewMode);
   const toggleMode = useUIStore((s) => s.toggleMode);
   const setMode = useUIStore((s) => s.setMode);
   const lastAreaTool = useUIStore((s) => s.lastAreaTool);
@@ -45,8 +45,14 @@ export function ModeButtons() {
   const toggleGrid = useUIStore((s) => s.toggleGrid);
   const setGridSpacing = useUIStore((s) => s.setGridSpacing);
 
-  const is3D = viewMode === '3d';
-  const hasTarget = is3D ? !!modelUrl : !!image;
+  const sceneObjects = useSceneObjectStore((s) => s.objects);
+  const selectedObjectId = useSceneObjectStore((s) => s.selectedObjectId);
+  const transformMode = useSceneObjectStore((s) => s.transformMode);
+  const setTransformMode = useSceneObjectStore((s) => s.setTransformMode);
+
+  // Auto-detect 3D mode from scene contents
+  const is3D = sceneObjects.some((o) => o.type === 'model') || !!modelUrl;
+  const hasTarget = is3D ? (!!modelUrl || sceneObjects.some((o) => o.type === 'model')) : (!!image || sceneObjects.some((o) => o.type === 'image'));
 
   return (
     <div className="flex items-center gap-1">
@@ -203,6 +209,52 @@ export function ModeButtons() {
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
+        </>
+      )}
+
+      {/* Transform mode buttons — visible when an object is selected */}
+      {selectedObjectId && (
+        <>
+          <div className="mx-1 h-6 w-px bg-border" />
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant={transformMode === 'translate' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setTransformMode('translate')}
+                className={transformMode === 'translate' ? 'bg-blue-600 hover:bg-blue-700 text-white' : ''}
+              >
+                <Move className="h-4 w-4" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Move object (T)</TooltipContent>
+          </Tooltip>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant={transformMode === 'rotate' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setTransformMode('rotate')}
+                className={transformMode === 'rotate' ? 'bg-blue-600 hover:bg-blue-700 text-white' : ''}
+              >
+                <RotateCcw className="h-4 w-4" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Rotate object (R)</TooltipContent>
+          </Tooltip>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant={transformMode === 'scale' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setTransformMode('scale')}
+                className={transformMode === 'scale' ? 'bg-blue-600 hover:bg-blue-700 text-white' : ''}
+              >
+                <Maximize className="h-4 w-4" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Scale object (S)</TooltipContent>
+          </Tooltip>
         </>
       )}
     </div>

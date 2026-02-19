@@ -3,6 +3,7 @@
 import { useRef, useCallback, useEffect, Suspense } from 'react';
 import { useCanvasStore } from '@/stores/useCanvasStore';
 import { useUIStore } from '@/stores/useUIStore';
+import { useSceneObjectStore } from '@/stores/useSceneObjectStore';
 import { useImageLoader } from '@/hooks/useImageLoader';
 import { use3DModelLoader, isModelFile } from '@/hooks/use3DModelLoader';
 import { DropZone } from './DropZone';
@@ -13,9 +14,10 @@ export function CanvasContainer() {
 
   const image = useCanvasStore((s) => s.image);
   const modelUrl = useCanvasStore((s) => s.modelUrl);
+  const sceneObjectCount = useSceneObjectStore((s) => s.objects.length);
   const mode = useUIStore((s) => s.mode);
-  const viewMode = useUIStore((s) => s.viewMode);
   const cropMode = useUIStore((s) => s.cropMode);
+  const hasModels = useSceneObjectStore((s) => s.objects.some((o) => o.type === 'model'));
 
   const { loadFromFile, loadFromDrop, loadFromClipboard } = useImageLoader();
   const { loadFromFile: loadModelFromFile } = use3DModelLoader();
@@ -40,20 +42,22 @@ export function CanvasContainer() {
   const handleDrop = useCallback(
     (e: React.DragEvent) => {
       e.preventDefault();
-      const file = e.dataTransfer.files[0];
-      if (!file) return;
-
-      if (isModelFile(file)) {
-        loadModelFromFile(file);
-        return;
-      }
+      const files = e.dataTransfer.files;
+      if (!files.length) return;
 
       const container = containerRef.current;
-      if (!container) return;
-      const rect = container.getBoundingClientRect();
-      loadFromDrop(e, rect.width, rect.height);
+      const rect = container?.getBoundingClientRect();
+
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        if (isModelFile(file)) {
+          loadModelFromFile(file);
+        } else if (file.type.startsWith('image/') && rect) {
+          loadFromFile(file, rect.width, rect.height);
+        }
+      }
     },
-    [loadFromDrop, loadModelFromFile]
+    [loadFromFile, loadModelFromFile]
   );
 
   // File input handler for images (called from toolbar)
@@ -93,13 +97,13 @@ export function CanvasContainer() {
     };
   }, [loadModelFromFile]);
 
-  const is3D = viewMode === '3d';
+  const is3D = hasModels || !!modelUrl;
   const cursorClass = is3D ? '' :
     cropMode ? 'cursor-crosshair' :
     mode === 'none' ? 'cursor-grab' :
     mode === 'annotation' ? 'cursor-text' : 'cursor-crosshair';
 
-  const hasContent = image || modelUrl;
+  const hasContent = image || modelUrl || sceneObjectCount > 0;
 
   return (
     <div

@@ -6,6 +6,7 @@ import { BlueprintGrid } from '@/components/landing/BlueprintGrid';
 import { DrawingLine } from '@/components/landing/DrawingLine';
 import HeroScene from '@/components/landing/HeroScene';
 import { ThemeToggle } from '@/components/ThemeToggle';
+import { TypewriterPhrase } from '@/components/landing/TypewriterPhrase';
 
 const steps = [
   {
@@ -79,7 +80,7 @@ export default function LandingPage() {
           <h1 className="text-5xl font-bold leading-tight tracking-tight sm:text-6xl">
             Measure anything
             <br />
-            <span className="text-rose-500">from a photo</span>
+            <TypewriterPhrase />
           </h1>
           <p className="mt-6 text-lg leading-relaxed text-muted-foreground sm:text-xl">
             Know one dimension? MeasureIt calculates the rest.

@@ -2,7 +2,10 @@
 
 import { useCallback } from 'react';
 import { useMeasurementStore } from '@/stores/useMeasurementStore';
-import { SavedProject, AreaMeasurement, Measurement, AnyMeasurement } from '@/types/measurement';
+import { useSceneObjectStore } from '@/stores/useSceneObjectStore';
+import { useCanvasStore } from '@/stores/useCanvasStore';
+import { SavedProject, SavedProjectV2, AreaMeasurement, Measurement, AnyMeasurement } from '@/types/measurement';
+import type { SerializedSceneObject } from '@/types/scene-object';
 
 const KEY_PREFIX = 'measureit_projects_';
 
@@ -53,7 +56,7 @@ function migrateLegacy(m: any): AnyMeasurement {
       start: { x: 0, y: 0 },
       end: { x: 0, y: 0 },
       pixelLength: distance,
-      start3D: m.start, // legacy Measurement3D stored Point3D in start/end
+      start3D: m.start,
       end3D: m.end,
       distance,
     } as Measurement;
@@ -61,18 +64,101 @@ function migrateLegacy(m: any): AnyMeasurement {
   return m as AnyMeasurement;
 }
 
+/** Serialize scene objects for storage (strip HTMLImageElement, blob URLs) */
+function serializeObjects(): SerializedSceneObject[] {
+  const { objects } = useSceneObjectStore.getState();
+  return objects.map((obj) => ({
+    id: obj.id,
+    type: obj.type,
+    name: obj.name,
+    imageDataUrl: obj.imageDataUrl,
+    modelFileType: obj.modelFileType,
+    transform: { ...obj.transform },
+    visible: obj.visible,
+    locked: obj.locked,
+    referenceValue: obj.referenceValue,
+    referenceUnit: obj.referenceUnit,
+    order: obj.order,
+  }));
+}
+
+/** Deserialize and restore scene objects from saved data */
+function restoreObjects(serialized: SerializedSceneObject[]): void {
+  const store = useSceneObjectStore.getState();
+  store.reset();
+
+  for (const obj of serialized) {
+    if (obj.type === 'image' && obj.imageDataUrl) {
+      // Restore image from data URL
+      const img = new Image();
+      const savedObj = obj;
+      img.onload = () => {
+        const id = store.addImage(img, savedObj.name, savedObj.imageDataUrl);
+        // Restore saved properties (overwrite auto-generated values)
+        store.updateObject(id, {
+          transform: savedObj.transform,
+          visible: savedObj.visible,
+          locked: savedObj.locked,
+          referenceValue: savedObj.referenceValue,
+          referenceUnit: savedObj.referenceUnit,
+          order: savedObj.order,
+        });
+        // Bridge: also populate old canvas store
+        useCanvasStore.getState().setImage(img, savedObj.name);
+      };
+      img.src = obj.imageDataUrl;
+    } else if (obj.type === 'model') {
+      // Models too large for localStorage — add placeholder, user must re-import
+      const id = store.addModel('', obj.name, obj.modelFileType ?? 'glb');
+      store.updateObject(id, {
+        transform: obj.transform,
+        visible: false, // Hidden until re-imported
+        locked: obj.locked,
+        referenceValue: obj.referenceValue,
+        referenceUnit: obj.referenceUnit,
+        order: obj.order,
+      });
+    }
+  }
+}
+
+/** Check if a raw project is V2 format */
+function isV2(project: any): project is SavedProjectV2 {
+  return project.version === 2;
+}
+
+/** Load measurements into store (shared between V1 and V2) */
+function loadMeasurements(measurements: any[], useLegacyMigration: boolean): void {
+  const store = useMeasurementStore.getState();
+  for (const rawM of measurements) {
+    const m = useLegacyMigration ? migrateLegacy(rawM) : (rawM as AnyMeasurement);
+    if (m.type === 'area') {
+      if (!(m as AreaMeasurement).areaKind) {
+        (m as AreaMeasurement).areaKind = 'polygon';
+      }
+      store.addArea(m as AreaMeasurement);
+    } else if (m.type === 'angle') {
+      store.addAngle(m);
+    } else if (m.type === 'annotation') {
+      store.addAnnotation(m);
+    } else if (m.type === 'reference' || m.type === 'measure') {
+      store.addMeasurement(m as Measurement);
+    }
+  }
+}
+
 export function useLocalStorage() {
   const saveProject = useCallback((name?: string) => {
-    const { measurements, referenceValue, referenceUnit } =
-      useMeasurementStore.getState();
+    const { measurements } = useMeasurementStore.getState();
+    const objects = serializeObjects();
 
     const id = crypto.randomUUID();
-    const project: SavedProject = {
+    const project: SavedProjectV2 = {
+      version: 2,
       id,
       name: name || `Project ${new Date().toLocaleString()}`,
+      objects,
       measurements,
-      referenceValue,
-      referenceUnit,
       updatedAt: Date.now(),
     };
 
@@ -89,31 +175,24 @@ export function useLocalStorage() {
     try {
       const raw = localStorage.getItem(getProjectKey(id));
       if (!raw) return null;
-      const project: SavedProject = JSON.parse(raw);
+      const project = JSON.parse(raw);
 
-      const store = useMeasurementStore.getState();
-      // Clear current and load saved measurements
-      store.clearAll();
-      for (const raw of project.measurements) {
-        // Migration: convert legacy reference3d/measure3d to unified Measurement
-        const m = migrateLegacy(raw);
+      const mStore = useMeasurementStore.getState();
+      mStore.clearAll();
+      useCanvasStore.getState().reset();
 
-        if (m.type === 'area') {
-          // Migration: old projects may lack areaKind
-          if (!(m as AreaMeasurement).areaKind) {
-            (m as AreaMeasurement).areaKind = 'polygon';
-          }
-          store.addArea(m as AreaMeasurement);
-        } else if (m.type === 'angle') {
-          store.addAngle(m);
-        } else if (m.type === 'annotation') {
-          store.addAnnotation(m);
-        } else if (m.type === 'reference' || m.type === 'measure') {
-          store.addMeasurement(m as Measurement);
-        }
+      if (isV2(project)) {
+        // V2 format: restore scene objects and measurements
+        restoreObjects(project.objects);
+        loadMeasurements(project.measurements, false);
+      } else {
+        // V1 format: legacy migration
+        const v1 = project as SavedProject;
+        useSceneObjectStore.getState().reset();
+        loadMeasurements(v1.measurements, true);
+        mStore.setReferenceValue(v1.referenceValue);
+        mStore.setReferenceUnit(v1.referenceUnit);
       }
-      store.setReferenceValue(project.referenceValue);
-      store.setReferenceUnit(project.referenceUnit);
 
       return project;
     } catch {
@@ -121,9 +200,9 @@ export function useLocalStorage() {
     }
   }, []);
 
-  const listProjects = useCallback((): SavedProject[] => {
+  const listProjects = useCallback((): (SavedProject | SavedProjectV2)[] => {
     const index = readIndex();
-    const projects: SavedProject[] = [];
+    const projects: (SavedProject | SavedProjectV2)[] = [];
     for (const id of index.ids) {
       try {
         const raw = localStorage.getItem(getProjectKey(id));

@@ -20,12 +20,16 @@ interface MeasurementState {
   clearAll: () => void;
   undo: () => void;
   redo: () => void;
-  /** Get the reference measurement, optionally filtered by surface */
-  getReference: (surface?: MeasurementSurface) => Measurement | undefined;
-  getMeasureCount: (surface?: MeasurementSurface) => number;
-  getAngleCount: () => number;
-  getAreaCount: () => number;
-  getAnnotationCount: () => number;
+  /** Get the reference measurement, optionally filtered by surface and/or surfaceId */
+  getReference: (surface?: MeasurementSurface, surfaceId?: string) => Measurement | undefined;
+  getMeasureCount: (surface?: MeasurementSurface, surfaceId?: string) => number;
+  getAngleCount: (surfaceId?: string) => number;
+  getAreaCount: (surfaceId?: string) => number;
+  getAnnotationCount: (surfaceId?: string) => number;
+  getMeasurementsForObject: (surfaceId: string) => AnyMeasurement[];
+  toggleVisibility: (id: string) => void;
+  toggleLocked: (id: string) => void;
+  setGroupVisibility: (ids: string[], visible: boolean) => void;
   adjustAllCoordinates: (dx: number, dy: number) => void;
 }
 
@@ -42,11 +46,16 @@ export const useMeasurementStore = create<MeasurementState>((set, get) => ({
     const surface = m.surface ?? 'image';
 
     if (m.type === 'reference') {
-      // Replace the existing reference for the same surface
+      // Replace the existing reference for the same surface/object
       set({
-        measurements: [m, ...measurements.filter((x) =>
-          !(x.type === 'reference' && ((x as Measurement).surface ?? 'image') === surface)
-        )],
+        measurements: [m, ...measurements.filter((x) => {
+          if (x.type !== 'reference') return true;
+          const xm = x as Measurement;
+          // If surfaceId is set, only replace reference for the same object
+          if (m.surfaceId) return xm.surfaceId !== m.surfaceId;
+          // Legacy: replace by surface type
+          return ((xm.surface ?? 'image') !== surface);
+        })],
         past,
         future: [],
       });
@@ -143,14 +152,24 @@ export const useMeasurementStore = create<MeasurementState>((set, get) => ({
     });
   },
 
-  getReference: (surface) => {
+  getReference: (surface, surfaceId) => {
+    if (surfaceId) {
+      return get().measurements.find(
+        (m): m is Measurement => m.type === 'reference' && (m as Measurement).surfaceId === surfaceId
+      );
+    }
     const s = surface ?? 'image';
     return get().measurements.find(
       (m): m is Measurement => m.type === 'reference' && ((m as Measurement).surface ?? 'image') === s
     );
   },
 
-  getMeasureCount: (surface) => {
+  getMeasureCount: (surface, surfaceId) => {
+    if (surfaceId) {
+      return get().measurements.filter(
+        (m) => m.type === 'measure' && (m as Measurement).surfaceId === surfaceId
+      ).length;
+    }
     if (surface) {
       return get().measurements.filter(
         (m) => m.type === 'measure' && ((m as Measurement).surface ?? 'image') === surface
@@ -159,9 +178,65 @@ export const useMeasurementStore = create<MeasurementState>((set, get) => ({
     return get().measurements.filter((m) => m.type === 'measure').length;
   },
 
-  getAngleCount: () => get().measurements.filter((m) => m.type === 'angle').length,
-  getAreaCount: () => get().measurements.filter((m) => m.type === 'area').length,
-  getAnnotationCount: () => get().measurements.filter((m) => m.type === 'annotation').length,
+  getAngleCount: (surfaceId) => {
+    if (surfaceId) {
+      return get().measurements.filter((m) => m.type === 'angle' && m.surfaceId === surfaceId).length;
+    }
+    return get().measurements.filter((m) => m.type === 'angle').length;
+  },
+  getAreaCount: (surfaceId) => {
+    if (surfaceId) {
+      return get().measurements.filter((m) => m.type === 'area' && m.surfaceId === surfaceId).length;
+    }
+    return get().measurements.filter((m) => m.type === 'area').length;
+  },
+  getAnnotationCount: (surfaceId) => {
+    if (surfaceId) {
+      return get().measurements.filter((m) => m.type === 'annotation' && m.surfaceId === surfaceId).length;
+    }
+    return get().measurements.filter((m) => m.type === 'annotation').length;
+  },
+
+  getMeasurementsForObject: (surfaceId) => {
+    return get().measurements.filter((m) => m.surfaceId === surfaceId);
+  },
+
+  toggleVisibility: (id) => {
+    const { measurements } = get();
+    const past = [...get().past, [...measurements]].slice(-50);
+    set({
+      measurements: measurements.map((m) =>
+        m.id === id ? { ...m, visible: m.visible === false ? undefined : false } as AnyMeasurement : m
+      ),
+      past,
+      future: [],
+    });
+  },
+
+  toggleLocked: (id) => {
+    const { measurements } = get();
+    const past = [...get().past, [...measurements]].slice(-50);
+    set({
+      measurements: measurements.map((m) =>
+        m.id === id ? { ...m, locked: m.locked ? undefined : true } as AnyMeasurement : m
+      ),
+      past,
+      future: [],
+    });
+  },
+
+  setGroupVisibility: (ids, visible) => {
+    const { measurements } = get();
+    const past = [...get().past, [...measurements]].slice(-50);
+    const idSet = new Set(ids);
+    set({
+      measurements: measurements.map((m) =>
+        idSet.has(m.id) ? { ...m, visible: visible ? undefined : false } as AnyMeasurement : m
+      ),
+      past,
+      future: [],
+    });
+  },
 
   adjustAllCoordinates: (dx, dy) => {
     const { measurements } = get();

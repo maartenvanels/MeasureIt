@@ -2,26 +2,30 @@
 
 import { useCallback } from 'react';
 import { useCanvasStore } from '@/stores/useCanvasStore';
+import { useSceneObjectStore } from '@/stores/useSceneObjectStore';
 
 export function useImageLoader() {
   const setImage = useCanvasStore((s) => s.setImage);
-  const fitImageToContainer = useCanvasStore((s) => s.fitImageToContainer);
+  const addImage = useSceneObjectStore((s) => s.addImage);
 
   const loadFromFile = useCallback(
     (file: File, containerWidth: number, containerHeight: number) => {
+      void containerWidth; void containerHeight;
       if (!file.type.startsWith('image/')) return;
       const reader = new FileReader();
       reader.onload = (e) => {
+        const dataUrl = e.target?.result as string;
         const img = new Image();
         img.onload = () => {
+          // Bridge: populate both stores during migration
           setImage(img, file.name);
-          fitImageToContainer(containerWidth, containerHeight);
+          addImage(img, file.name, dataUrl);
         };
-        img.src = e.target?.result as string;
+        img.src = dataUrl;
       };
       reader.readAsDataURL(file);
     },
-    [setImage, fitImageToContainer]
+    [setImage, addImage]
   );
 
   const loadFromDrop = useCallback(

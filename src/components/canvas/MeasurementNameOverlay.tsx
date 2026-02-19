@@ -85,6 +85,7 @@ export function MeasurementNameOverlay() {
 
   const handlePointerDown = useCallback(
     (e: React.PointerEvent, m: AnyMeasurement) => {
+      if (m.locked) return;
       e.stopPropagation();
       (e.target as HTMLElement).setPointerCapture(e.pointerId);
       const currentOffset = (m as unknown as Record<string, unknown>)
@@ -119,7 +120,7 @@ export function MeasurementNameOverlay() {
 
   // Filter measurements that have names (skip annotations)
   const namedMeasurements = measurements.filter(
-    (m) => m.type !== 'annotation' && m.name
+    (m) => m.type !== 'annotation' && m.name && m.visible !== false
   );
 
   if (namedMeasurements.length === 0) return null;

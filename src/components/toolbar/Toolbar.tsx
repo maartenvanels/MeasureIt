@@ -25,19 +25,20 @@ import { ThemeToggle } from '@/components/ThemeToggle';
 import { useUIStore } from '@/stores/useUIStore';
 import { useCanvasStore } from '@/stores/useCanvasStore';
 import { useMeasurementStore } from '@/stores/useMeasurementStore';
+import { useSceneObjectStore } from '@/stores/useSceneObjectStore';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
-import { SavedProject } from '@/types/measurement';
+import { SavedProject, SavedProjectV2 } from '@/types/measurement';
 
 export function Toolbar() {
   const setHelpDialogOpen = useUIStore((s) => s.setHelpDialogOpen);
-  const viewMode = useUIStore((s) => s.viewMode);
-  const setViewMode = useUIStore((s) => s.setViewMode);
   const image = useCanvasStore((s) => s.image);
   const modelUrl = useCanvasStore((s) => s.modelUrl);
   const resetCanvas = useCanvasStore((s) => s.reset);
   const clearAll = useMeasurementStore((s) => s.clearAll);
+  const sceneObjectCount = useSceneObjectStore((s) => s.objects.length);
+  const resetSceneObjects = useSceneObjectStore((s) => s.reset);
   const { saveProject, loadProject, listProjects, deleteProject } = useLocalStorage();
-  const [projects, setProjects] = useState<SavedProject[]>([]);
+  const [projects, setProjects] = useState<(SavedProject | SavedProjectV2)[]>([]);
 
   const refreshProjects = () => {
     setProjects(listProjects());
@@ -102,39 +103,17 @@ export function Toolbar() {
         <TooltipContent>Load a 3D model (.glb, .stl)</TooltipContent>
       </Tooltip>
 
-      {/* View mode switcher — only show when both image and model are loaded */}
-      {image && modelUrl && (
-        <div className="flex items-center rounded-md border border-border">
-          <Button
-            variant={viewMode === '2d' ? 'default' : 'ghost'}
-            size="sm"
-            className={`h-7 rounded-r-none text-xs ${viewMode === '2d' ? 'bg-muted' : ''}`}
-            onClick={() => setViewMode('2d')}
-          >
-            2D
-          </Button>
-          <Button
-            variant={viewMode === '3d' ? 'default' : 'ghost'}
-            size="sm"
-            className={`h-7 rounded-l-none text-xs ${viewMode === '3d' ? 'bg-muted' : ''}`}
-            onClick={() => setViewMode('3d')}
-          >
-            3D
-          </Button>
-        </div>
-      )}
-
       <Tooltip>
         <TooltipTrigger asChild>
           <Button
             variant="outline"
             size="sm"
-            disabled={!image && !modelUrl}
+            disabled={!image && !modelUrl && sceneObjectCount === 0}
             onClick={() => {
-              if (confirm('Start over? All measurements will be removed.')) {
+              if (confirm('Start over? All objects and measurements will be removed.')) {
                 clearAll();
                 resetCanvas();
-                setViewMode('2d');
+                resetSceneObjects();
               }
             }}
           >
@@ -142,7 +121,7 @@ export function Toolbar() {
             New
           </Button>
         </TooltipTrigger>
-        <TooltipContent>Remove image/model and start over</TooltipContent>
+        <TooltipContent>Remove all objects and start over</TooltipContent>
       </Tooltip>
 
       <Separator orientation="vertical" className="mx-1 h-6" />

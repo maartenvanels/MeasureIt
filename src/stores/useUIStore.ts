@@ -1,9 +1,8 @@
 import { create } from 'zustand';
-import { DrawMode, Point, ViewMode, isAreaMode } from '@/types/measurement';
+import { DrawMode, Point, isAreaMode } from '@/types/measurement';
 
 interface UIState {
   mode: DrawMode;
-  viewMode: ViewMode;
   selectedMeasurementId: string | null;
   sidebarOpen: boolean;
   sidebarWidth: number;
@@ -33,7 +32,6 @@ interface UIState {
   lastAreaTool: DrawMode;
   setLastAreaTool: (mode: DrawMode) => void;
 
-  setViewMode: (viewMode: ViewMode) => void;
   setMode: (mode: DrawMode) => void;
   toggleMode: (mode: DrawMode) => void;
   selectMeasurement: (id: string | null) => void;
@@ -64,11 +62,14 @@ interface UIState {
 
   // 3D display actions
   toggleShow3DAxisDistances: () => void;
+
+  // Scene browser
+  collapsedGroups: Record<string, boolean>;
+  toggleGroupCollapsed: (key: string) => void;
 }
 
 export const useUIStore = create<UIState>((set, get) => ({
   mode: 'none',
-  viewMode: '2d',
   selectedMeasurementId: null,
   sidebarOpen: true,
   sidebarWidth: (() => {
@@ -114,7 +115,6 @@ export const useUIStore = create<UIState>((set, get) => ({
     try { localStorage.setItem('measureit_last_area_tool', mode); } catch {}
   },
 
-  setViewMode: (viewMode) => set({ viewMode, mode: 'none' }),
   setMode: (mode) => {
     set({ mode });
     if (isAreaMode(mode) && mode !== 'area') {
@@ -164,4 +164,11 @@ export const useUIStore = create<UIState>((set, get) => ({
   cancelCrop: () => set({ cropMode: false, cropBounds: null }),
 
   toggleShow3DAxisDistances: () => set({ show3DAxisDistances: !get().show3DAxisDistances }),
+
+  // Scene browser
+  collapsedGroups: {},
+  toggleGroupCollapsed: (key) => {
+    const prev = get().collapsedGroups;
+    set({ collapsedGroups: { ...prev, [key]: !prev[key] } });
+  },
 }));

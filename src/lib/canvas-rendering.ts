@@ -879,6 +879,7 @@ export function renderOverlay(
   }
 
   for (const m of measurements) {
+    if (m.visible === false) continue; // hidden via scene browser
     if (m.type === 'annotation') continue; // rendered as HTML overlay (including leader lines)
     if ((m.type === 'reference' || m.type === 'measure') && (m as Measurement).surface === 'model') continue; // rendered in 3D viewer
     if (m.type === 'angle') {
