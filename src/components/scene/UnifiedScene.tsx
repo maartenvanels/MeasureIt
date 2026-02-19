@@ -2,7 +2,7 @@
 
 import { useRef, useMemo, useCallback, useState, useEffect } from 'react';
 import { Canvas, useThree, ThreeEvent } from '@react-three/fiber';
-import { Html, Line, Bvh, GizmoHelper, GizmoViewcube } from '@react-three/drei';
+import { Html, Line, Bvh, GizmoHelper, GizmoViewcube, PerspectiveCamera, OrthographicCamera } from '@react-three/drei';
 import * as THREE from 'three';
 import { useCanvasStore } from '@/stores/useCanvasStore';
 import { useUIStore } from '@/stores/useUIStore';
@@ -745,10 +745,32 @@ function AxisDistanceToggle() {
   );
 }
 
+// ---- Camera switcher (inside Canvas, avoids remount) ----
+
+function CameraSwitch({ ortho }: { ortho: boolean }) {
+  if (ortho) {
+    return (
+      <OrthographicCamera
+        makeDefault
+        position={[0, 0, 100]}
+        zoom={1}
+        near={0.1}
+        far={1000}
+      />
+    );
+  }
+  return (
+    <PerspectiveCamera
+      makeDefault
+      position={[0, 0, 5]}
+      fov={50}
+    />
+  );
+}
+
 // ---- Main exported component ----
 
 export function UnifiedScene() {
-  const image = useCanvasStore((s) => s.image);
   const modelUrl = useCanvasStore((s) => s.modelUrl);
   const objects = useSceneObjectStore((s) => s.objects);
 
@@ -758,13 +780,6 @@ export function UnifiedScene() {
   return (
     <div className="relative w-full h-full">
       <Canvas
-        key={hasModels ? 'perspective' : 'ortho'}
-        orthographic={!hasModels}
-        camera={
-          hasModels
-            ? { position: [0, 0, 5] as [number, number, number], fov: 50 }
-            : { position: [0, 0, 100] as [number, number, number], zoom: 1, near: 0.1, far: 1000 }
-        }
         style={{ background: hasModels ? '#1a1a2e' : '#09090b' }}
         onPointerMissed={() => {
           const state = useCanvasStore.getState();
@@ -772,6 +787,7 @@ export function UnifiedScene() {
           if (state.isDrawing3D) state.cancelDrawing3D();
         }}
       >
+        <CameraSwitch ortho={!hasModels} />
         <UnifiedSceneContent />
       </Canvas>
 

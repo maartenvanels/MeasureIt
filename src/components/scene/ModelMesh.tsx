@@ -1,7 +1,7 @@
 'use client';
 
-import { useMemo, useRef, useState, useEffect } from 'react';
-import { useLoader, useThree, ThreeEvent } from '@react-three/fiber';
+import { useMemo, useRef, useState } from 'react';
+import { useLoader, useThree, useFrame, ThreeEvent } from '@react-three/fiber';
 import { Center } from '@react-three/drei';
 import { STLLoader } from 'three/examples/jsm/loaders/STLLoader.js';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
@@ -55,31 +55,44 @@ function GLBModel({ url, onPointerDown, onPointerMove, onPointerLeave }: Omit<Mo
 
 /**
  * Wraps a model mesh with auto-fit-to-camera on first render.
- * Reports the bounding-box max dimension via onModelScale.
+ * Uses useFrame to wait until geometry is actually available (after Suspense + Center),
+ * then positions the camera and syncs OrbitControls.
  */
 export function ModelMeshWithFitter({ url, fileType, onPointerDown, onPointerMove, onPointerLeave, onModelScale }: ModelMeshProps) {
   const groupRef = useRef<THREE.Group>(null);
-  const { camera } = useThree();
+  const { camera, controls } = useThree();
   const [fitted, setFitted] = useState(false);
 
-  useEffect(() => {
-    if (!groupRef.current || fitted) return;
+  // Use useFrame to reliably detect when model geometry is available.
+  // useEffect fires too early — before useLoader resolves or Center processes.
+  useFrame(() => {
+    if (fitted || !groupRef.current) return;
     const box = new THREE.Box3().setFromObject(groupRef.current);
     if (box.isEmpty()) return;
+
     const center = box.getCenter(new THREE.Vector3());
     const size = box.getSize(new THREE.Vector3());
     const maxDim = Math.max(size.x, size.y, size.z);
     const distance = maxDim * 2;
+
     camera.position.set(center.x + distance * 0.5, center.y + distance * 0.3, center.z + distance * 0.5);
     camera.lookAt(center);
+
     if (camera instanceof THREE.PerspectiveCamera) {
       camera.near = maxDim * 0.001;
       camera.far = maxDim * 100;
       camera.updateProjectionMatrix();
     }
+
+    // Sync OrbitControls target so it orbits around the model center
+    if (controls && 'target' in controls) {
+      (controls.target as THREE.Vector3).copy(center);
+      (controls as unknown as { update: () => void }).update();
+    }
+
     onModelScale?.(maxDim);
     setFitted(true);
-  }, [camera, fitted, onModelScale]);
+  });
 
   const meshProps = { url, onPointerDown, onPointerMove, onPointerLeave };
 
