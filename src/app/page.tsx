@@ -50,6 +50,9 @@ export default function LandingPage() {
             <span className="text-lg font-semibold">MeasureIt</span>
           </div>
           <div className="flex items-center gap-2">
+            <Link href="/blog" className="text-sm text-muted-foreground hover:text-foreground transition-colors px-2 py-1">
+              Blog
+            </Link>
             <ThemeToggle />
             <Link href="/app">
               <Button size="sm" className="bg-rose-600 hover:bg-rose-700 text-white">
