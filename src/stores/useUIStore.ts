@@ -4,6 +4,7 @@ import { DrawMode, Point, isAreaMode } from '@/types/measurement';
 interface UIState {
   mode: DrawMode;
   selectedMeasurementId: string | null;
+  selectedMeasurementIds: string[];
   sidebarOpen: boolean;
   sidebarWidth: number;
   helpDialogOpen: boolean;
@@ -34,7 +35,7 @@ interface UIState {
 
   setMode: (mode: DrawMode) => void;
   toggleMode: (mode: DrawMode) => void;
-  selectMeasurement: (id: string | null) => void;
+  selectMeasurement: (id: string | null, additive?: boolean) => void;
   toggleSidebar: () => void;
   setSidebarOpen: (open: boolean) => void;
   setSidebarWidth: (width: number) => void;
@@ -71,6 +72,7 @@ interface UIState {
 export const useUIStore = create<UIState>((set, get) => ({
   mode: 'none',
   selectedMeasurementId: null,
+  selectedMeasurementIds: [],
   sidebarOpen: true,
   sidebarWidth: (() => {
     if (typeof window === 'undefined') return 288;
@@ -129,8 +131,26 @@ export const useUIStore = create<UIState>((set, get) => ({
       get().setLastAreaTool(mode);
     }
   },
-  selectMeasurement: (id) =>
-    set({ selectedMeasurementId: get().selectedMeasurementId === id ? null : id }),
+  selectMeasurement: (id, additive) => {
+    if (id === null) {
+      set({ selectedMeasurementId: null, selectedMeasurementIds: [] });
+      return;
+    }
+    const current = get().selectedMeasurementIds;
+    if (additive) {
+      const next = current.includes(id) ? current.filter((x) => x !== id) : [...current, id];
+      set({
+        selectedMeasurementId: next[next.length - 1] ?? null,
+        selectedMeasurementIds: next,
+      });
+    } else {
+      const isAlreadyOnly = current.length === 1 && current[0] === id;
+      set({
+        selectedMeasurementId: isAlreadyOnly ? null : id,
+        selectedMeasurementIds: isAlreadyOnly ? [] : [id],
+      });
+    }
+  },
   toggleSidebar: () => set({ sidebarOpen: !get().sidebarOpen }),
   setSidebarOpen: (open) => set({ sidebarOpen: open }),
   setSidebarWidth: (width) => {

@@ -1,11 +1,9 @@
 import { create } from 'zustand';
 import { Point, Point3D, ViewTransform, AngleMeasurement, AreaMeasurement } from '@/types/measurement';
 import { pixelDist, snapToAxis, calcAngleDeg, calcPolygonArea, circumscribedCircle, circleArea, simplifyPath } from '@/lib/geometry';
+import { useSceneObjectStore } from './useSceneObjectStore';
 
 interface CanvasState {
-  image: HTMLImageElement | null;
-  imageFileName: string | null;
-  blankCanvasSize: { width: number; height: number } | null;
   transform: ViewTransform;
   isDrawing: boolean;
   drawStart: Point | null;
@@ -38,7 +36,6 @@ interface CanvasState {
   // Circle-center drawing state
   circleCenterPoint: Point | null;
 
-  setImage: (img: HTMLImageElement, fileName?: string) => void;
   createBlankCanvas: (width: number, height: number) => void;
   setSnapPoint: (p: Point | null) => void;
   setTransform: (t: Partial<ViewTransform>) => void;
@@ -87,16 +84,11 @@ interface CanvasState {
   finishCircleCenter: (edgePt: Point) => AreaMeasurement | null;
   cancelCircleCenter: () => void;
 
-  // 3D model state
-  modelUrl: string | null;
-  modelFileName: string | null;
-  modelFileType: 'glb' | 'stl' | null;
+  // 3D drawing state
   isDrawing3D: boolean;
   draw3DStart: Point3D | null;
   draw3DCurrent: Point3D | null;
 
-  setModel: (url: string, fileName: string, fileType: 'glb' | 'stl') => void;
-  clearModel: () => void;
   startDrawing3D: (point: Point3D) => void;
   updateDrawing3D: (point: Point3D) => void;
   finishDrawing3D: () => { start: Point3D; end: Point3D; distance: number } | null;
@@ -115,9 +107,6 @@ interface CanvasState {
 }
 
 export const useCanvasStore = create<CanvasState>((set, get) => ({
-  image: null,
-  imageFileName: null,
-  blankCanvasSize: null,
   transform: { panX: 0, panY: 0, zoom: 1 },
   isDrawing: false,
   drawStart: null,
@@ -150,10 +139,7 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
   // Circle-center drawing
   circleCenterPoint: null,
 
-  // 3D model
-  modelUrl: null,
-  modelFileName: null,
-  modelFileType: null,
+  // 3D drawing
   isDrawing3D: false,
   draw3DStart: null,
   draw3DCurrent: null,
@@ -163,8 +149,6 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
   cropCurrent: null,
   isCropping: false,
 
-  setImage: (img, fileName) => set({ image: img, imageFileName: fileName ?? null, blankCanvasSize: null }),
-
   createBlankCanvas: (width, height) => {
     const offscreen = document.createElement('canvas');
     offscreen.width = width;
@@ -172,11 +156,12 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
     const ctx = offscreen.getContext('2d')!;
     ctx.fillStyle = '#ffffff';
     ctx.fillRect(0, 0, width, height);
+    const dataUrl = offscreen.toDataURL('image/png');
     const img = new window.Image();
     img.onload = () => {
-      set({ image: img, imageFileName: null, blankCanvasSize: { width, height } });
+      useSceneObjectStore.getState().addImage(img, 'Blank Canvas', dataUrl);
     };
-    img.src = offscreen.toDataURL('image/png');
+    img.src = dataUrl;
   },
   setSnapPoint: (p) => set({ snapPoint: p }),
 
@@ -184,7 +169,7 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
     set({ transform: { ...get().transform, ...t } }),
 
   fitImageToContainer: (containerWidth, containerHeight) => {
-    const { image } = get();
+    const image = useSceneObjectStore.getState().getFirstVisibleImage();
     if (!image) return;
     const scaleX = containerWidth / image.width;
     const scaleY = containerHeight / image.height;
@@ -431,13 +416,7 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
   },
   cancelCircleCenter: () => set({ circleCenterPoint: null }),
 
-  // 3D model actions
-  setModel: (url, fileName, fileType) => set({ modelUrl: url, modelFileName: fileName, modelFileType: fileType }),
-  clearModel: () => {
-    const { modelUrl } = get();
-    if (modelUrl) URL.revokeObjectURL(modelUrl);
-    set({ modelUrl: null, modelFileName: null, modelFileType: null, isDrawing3D: false, draw3DStart: null, draw3DCurrent: null });
-  },
+  // 3D drawing actions
   startDrawing3D: (point) => set({ isDrawing3D: true, draw3DStart: point, draw3DCurrent: point }),
   updateDrawing3D: (point) => set({ draw3DCurrent: point }),
   finishDrawing3D: () => {
@@ -460,7 +439,8 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
   startCropDraw: (pt) => set({ isCropping: true, cropStart: pt, cropCurrent: pt }),
   updateCropDraw: (pt) => set({ cropCurrent: pt }),
   finishCropDraw: () => {
-    const { cropStart, cropCurrent, image } = get();
+    const { cropStart, cropCurrent } = get();
+    const image = useSceneObjectStore.getState().getActiveImage();
     set({ isCropping: false, cropStart: null, cropCurrent: null });
     if (!cropStart || !cropCurrent || !image) return null;
 
@@ -476,8 +456,10 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
   },
   cancelCropDraw: () => set({ isCropping: false, cropStart: null, cropCurrent: null }),
   applyCrop: (bounds) => {
-    const { image } = get();
-    if (!image) return;
+    const sceneStore = useSceneObjectStore.getState();
+    const activeObj = sceneStore.getActiveObject();
+    const image = activeObj?.type === 'image' ? activeObj.image : null;
+    if (!image || !activeObj) return;
 
     const tempCanvas = document.createElement('canvas');
     tempCanvas.width = bounds.w;
@@ -485,19 +467,15 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
     const ctx = tempCanvas.getContext('2d')!;
     ctx.drawImage(image, bounds.x, bounds.y, bounds.w, bounds.h, 0, 0, bounds.w, bounds.h);
 
+    const dataUrl = tempCanvas.toDataURL('image/png');
     const newImg = new window.Image();
     newImg.onload = () => {
-      set({ image: newImg });
+      sceneStore.updateObject(activeObj.id, { image: newImg, imageDataUrl: dataUrl });
     };
-    newImg.src = tempCanvas.toDataURL('image/png');
+    newImg.src = dataUrl;
   },
   reset: () => {
-    const { modelUrl } = get();
-    if (modelUrl) URL.revokeObjectURL(modelUrl);
     set({
-      image: null,
-      imageFileName: null,
-      blankCanvasSize: null,
       transform: { panX: 0, panY: 0, zoom: 1 },
       isDrawing: false,
       drawStart: null,
@@ -515,9 +493,6 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
       isFreehandDrawing: false,
       circle3PtPoints: [],
       circleCenterPoint: null,
-      modelUrl: null,
-      modelFileName: null,
-      modelFileType: null,
       isDrawing3D: false,
       draw3DStart: null,
       draw3DCurrent: null,

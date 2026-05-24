@@ -1,7 +1,6 @@
 'use client';
 
 import { useRef, useCallback, useEffect, Suspense } from 'react';
-import { useCanvasStore } from '@/stores/useCanvasStore';
 import { useUIStore } from '@/stores/useUIStore';
 import { useSceneObjectStore } from '@/stores/useSceneObjectStore';
 import { useImageLoader } from '@/hooks/useImageLoader';
@@ -12,12 +11,10 @@ import { UnifiedScene } from '@/components/scene/UnifiedScene';
 export function CanvasContainer() {
   const containerRef = useRef<HTMLDivElement>(null);
 
-  const image = useCanvasStore((s) => s.image);
-  const modelUrl = useCanvasStore((s) => s.modelUrl);
-  const sceneObjectCount = useSceneObjectStore((s) => s.objects.length);
+  const hasContent = useSceneObjectStore((s) => s.objects.length > 0);
+  const hasModels = useSceneObjectStore((s) => s.objects.some((o) => o.type === 'model'));
   const mode = useUIStore((s) => s.mode);
   const cropMode = useUIStore((s) => s.cropMode);
-  const hasModels = useSceneObjectStore((s) => s.objects.some((o) => o.type === 'model'));
 
   const { loadFromFile, loadFromDrop, loadFromClipboard } = useImageLoader();
   const { loadFromFile: loadModelFromFile } = use3DModelLoader();
@@ -97,13 +94,10 @@ export function CanvasContainer() {
     };
   }, [loadModelFromFile]);
 
-  const is3D = hasModels || !!modelUrl;
-  const cursorClass = is3D ? '' :
+  const cursorClass = hasModels ? '' :
     cropMode ? 'cursor-crosshair' :
     mode === 'none' ? 'cursor-grab' :
     mode === 'annotation' ? 'cursor-text' : 'cursor-crosshair';
-
-  const hasContent = image || modelUrl || sceneObjectCount > 0;
 
   return (
     <div

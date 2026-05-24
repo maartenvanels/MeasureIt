@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { Eye, EyeOff, Lock, Unlock } from 'lucide-react';
+import { Eye, EyeOff, Lock, Unlock, Trash2 } from 'lucide-react';
 import type { Measurement, AreaMeasurement, Annotation, AnyMeasurement } from '@/types/measurement';
 import { useMeasurementStore } from '@/stores/useMeasurementStore';
 import { useSceneObjectStore } from '@/stores/useSceneObjectStore';
@@ -57,12 +57,14 @@ export function SceneTreeNode({ measurement: m }: Props) {
   const inputRef = useRef<HTMLInputElement>(null);
 
   const selectedId = useUIStore((s) => s.selectedMeasurementId);
+  const selectedIds = useUIStore((s) => s.selectedMeasurementIds);
   const selectMeasurement = useUIStore((s) => s.selectMeasurement);
   const toggleVisibility = useMeasurementStore((s) => s.toggleVisibility);
   const toggleLocked = useMeasurementStore((s) => s.toggleLocked);
   const renameMeasurement = useMeasurementStore((s) => s.renameMeasurement);
+  const removeMeasurement = useMeasurementStore((s) => s.removeMeasurement);
 
-  const isSelected = m.id === selectedId;
+  const isSelected = selectedIds.includes(m.id) || m.id === selectedId;
   const isVisible = m.visible !== false;
   const isLocked = m.locked === true;
   const color = getMeasurementColor(m);
@@ -92,7 +94,7 @@ export function SceneTreeNode({ measurement: m }: Props) {
       className={`group flex items-center gap-1 py-0.5 px-1 rounded text-xs cursor-pointer select-none ${
         isSelected ? 'bg-accent' : 'hover:bg-accent/50'
       } ${!isVisible ? 'opacity-40' : ''}`}
-      onClick={() => selectMeasurement(m.id)}
+      onClick={(e) => selectMeasurement(m.id, e.ctrlKey || e.metaKey)}
       onDoubleClick={(e) => {
         e.stopPropagation();
         if (!isLocked) {
@@ -162,6 +164,20 @@ export function SceneTreeNode({ measurement: m }: Props) {
         ) : (
           <Unlock className="h-3 w-3 text-muted-foreground" />
         )}
+      </button>
+
+      {/* Delete */}
+      <button
+        className="p-0.5 rounded opacity-0 transition-opacity group-hover:opacity-100 hover:bg-rose-500/20"
+        onClick={(e) => {
+          e.stopPropagation();
+          if (isLocked) return;
+          removeMeasurement(m.id);
+        }}
+        title={isLocked ? 'Unlock first to delete' : 'Delete'}
+        disabled={isLocked}
+      >
+        <Trash2 className="h-3 w-3 text-rose-400" />
       </button>
     </div>
   );

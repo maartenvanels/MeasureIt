@@ -193,7 +193,7 @@ describe('getAllEndpoints', () => {
 
   it('extracts points from area measurements', () => {
     const area: AreaMeasurement = {
-      id: '3', type: 'area',
+      id: '3', type: 'area', areaKind: 'polygon',
       points: [{ x: 0, y: 0 }, { x: 10, y: 0 }, { x: 10, y: 10 }],
       pixelArea: 50, name: 'P1', createdAt: 0,
     };

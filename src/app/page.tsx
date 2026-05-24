@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { Ruler, Upload, MousePointer2, Download, Keyboard, Smartphone, TriangleRight, Save } from 'lucide-react';
+import { Ruler, Upload, MousePointer2, Download, Keyboard, Smartphone, TriangleRight, Save, ArrowRight, Calendar } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { AnimatedSection } from '@/components/landing/AnimatedSection';
 import { BlueprintGrid } from '@/components/landing/BlueprintGrid';
@@ -7,6 +7,7 @@ import { DrawingLine } from '@/components/landing/DrawingLine';
 import HeroScene from '@/components/landing/HeroScene';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { TypewriterPhrase } from '@/components/landing/TypewriterPhrase';
+import { posts } from '@/content/blog/posts';
 
 const steps = [
   {
@@ -47,7 +48,7 @@ export default function LandingPage() {
             <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-rose-600 text-sm font-bold text-white">
               M
             </div>
-            <span className="text-lg font-semibold">MeasureIt</span>
+            <span className="text-lg font-semibold">measure-it</span>
           </div>
           <div className="flex items-center gap-2">
             <Link href="/blog" className="text-sm text-muted-foreground hover:text-foreground transition-colors px-2 py-1">
@@ -157,6 +158,62 @@ export default function LandingPage() {
         </div>
       </section>
 
+      {/* Latest from the blog */}
+      {posts.length > 0 && (
+        <section className="border-t border-border/50 bg-card/30 py-24">
+          <div className="mx-auto max-w-6xl px-6">
+            <AnimatedSection>
+              <h2 className="text-center text-3xl font-bold">Latest from the blog</h2>
+              <p className="mx-auto mt-4 max-w-xl text-center text-muted-foreground">
+                Updates, insights, and the story behind measure-it
+              </p>
+            </AnimatedSection>
+            <div className="mt-16 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+              {[...posts]
+                .sort((a, b) => b.date.localeCompare(a.date))
+                .slice(0, 3)
+                .map((post, i) => (
+                  <AnimatedSection key={post.slug} delay={i * 120}>
+                    <Link href={`/blog/${post.slug}`} className="group block h-full">
+                      <div className="flex h-full flex-col rounded-xl border border-border/50 bg-card/50 p-6 transition-all duration-300 hover:border-rose-500/30 hover:bg-card/80 hover:shadow-[0_0_30px_-5px_rgba(225,29,72,0.15)] hover:-translate-y-1">
+                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                          <Calendar className="h-3.5 w-3.5" />
+                          <time dateTime={post.date}>
+                            {new Date(post.date).toLocaleDateString('en-US', {
+                              month: 'short',
+                              day: 'numeric',
+                              year: 'numeric',
+                            })}
+                          </time>
+                          <span className="text-border">·</span>
+                          <span>{post.readingTime} min read</span>
+                        </div>
+                        <h3 className="mt-3 text-lg font-semibold leading-snug group-hover:text-rose-500 transition-colors">
+                          {post.title}
+                        </h3>
+                        <p className="mt-2 flex-1 text-sm leading-relaxed text-muted-foreground">
+                          {post.excerpt}
+                        </p>
+                        <div className="mt-4 flex items-center gap-1 text-sm font-medium text-rose-500">
+                          Read more
+                          <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+                        </div>
+                      </div>
+                    </Link>
+                  </AnimatedSection>
+                ))}
+            </div>
+            {posts.length > 3 && (
+              <div className="mt-10 text-center">
+                <Link href="/blog">
+                  <Button variant="outline">View all posts</Button>
+                </Link>
+              </div>
+            )}
+          </div>
+        </section>
+      )}
+
       {/* CTA */}
       <section className="border-t border-border/50 bg-card/30 py-24 text-center">
         <AnimatedSection className="mx-auto max-w-2xl px-6">
@@ -166,7 +223,7 @@ export default function LandingPage() {
           </p>
           <Link href="/app" className="mt-8 inline-block">
             <Button size="lg" className="bg-rose-600 hover:bg-rose-700 text-white px-10 text-base">
-              Open MeasureIt
+              Open measure-it
             </Button>
           </Link>
         </AnimatedSection>
@@ -175,7 +232,7 @@ export default function LandingPage() {
       {/* Footer */}
       <footer className="border-t border-border/50 py-8">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-6 text-sm text-muted-foreground">
-          <span>&copy; {new Date().getFullYear()} MeasureIt</span>
+          <span>&copy; {new Date().getFullYear()} measure-it</span>
           <a
             href="https://github.com/maartenvanels/MeasureIt"
             target="_blank"

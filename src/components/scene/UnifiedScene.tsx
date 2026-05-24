@@ -301,7 +301,10 @@ function findSnap3D(
 // ---- Image measurement layer (2D measurements + draw previews) ----
 
 function ImageMeasurementLayer() {
-  const image = useCanvasStore((s) => s.image);
+  const firstImage = useSceneObjectStore((s) => {
+    const img = s.objects.find((o) => o.type === 'image' && o.visible);
+    return img?.image ?? null;
+  });
   const isDrawing = useCanvasStore((s) => s.isDrawing);
   const drawStart = useCanvasStore((s) => s.drawStart);
   const drawCurrent = useCanvasStore((s) => s.drawCurrent);
@@ -378,7 +381,10 @@ function ImageMeasurementLayer() {
     measurements.filter(m => {
       if (m.visible === false) return false;
       if (m.type === 'reference' || m.type === 'measure') {
-        return ((m as Measurement).surface ?? 'image') === 'image';
+        const meas = m as Measurement;
+        // Skip virtual combined totals — sidebar-only.
+        if (meas.combinedFrom) return false;
+        return (meas.surface ?? 'image') === 'image';
       }
       return true; // angles, areas, annotations are always image-space
     }),
@@ -388,8 +394,8 @@ function ImageMeasurementLayer() {
   return (
     <>
       {/* Grid overlay */}
-      {gridEnabled && image && (
-        <ImageGrid imageWidth={image.width} imageHeight={image.height} spacing={gridSpacing} />
+      {gridEnabled && firstImage && (
+        <ImageGrid imageWidth={firstImage.width} imageHeight={firstImage.height} spacing={gridSpacing} />
       )}
 
       {/* Existing 2D measurements */}
@@ -494,7 +500,10 @@ function ModelMeasurementLayer({ modelScale }: { modelScale: number }) {
 
   const modelMeasurements = useMemo(
     () => measurements.filter((m): m is Measurement =>
-      (m.type === 'reference' || m.type === 'measure') && (m as Measurement).surface === 'model' && m.visible !== false
+      (m.type === 'reference' || m.type === 'measure') &&
+      (m as Measurement).surface === 'model' &&
+      m.visible !== false &&
+      !(m as Measurement).combinedFrom
     ),
     [measurements]
   );
@@ -549,9 +558,6 @@ function UnifiedSceneContent() {
   // Scene objects from new store
   const objects = useSceneObjectStore((s) => s.objects);
 
-  // Bridge: old store values (still used by interaction hooks)
-  const image = useCanvasStore((s) => s.image);
-  const modelUrl = useCanvasStore((s) => s.modelUrl);
   const isDrawing3D = useCanvasStore((s) => s.isDrawing3D);
   const startDrawing3D = useCanvasStore((s) => s.startDrawing3D);
 
@@ -567,8 +573,8 @@ function UnifiedSceneContent() {
 
   // Detect scene composition
   const visibleObjects = useMemo(() => objects.filter((o) => o.visible), [objects]);
-  const hasModels = visibleObjects.some((o) => o.type === 'model') || !!modelUrl;
-  const hasImages = visibleObjects.some((o) => o.type === 'image') || !!image;
+  const hasModels = visibleObjects.some((o) => o.type === 'model');
+  const hasImages = visibleObjects.some((o) => o.type === 'image');
   const cameraMode = hasModels ? 'orbit' : 'ortho';
   const isMeasuring = mode !== 'none';
 
@@ -579,11 +585,15 @@ function UnifiedSceneContent() {
 
   // Image camera fitting
   const { fitToImage } = useImageCamera();
+  const firstVisibleImage = useSceneObjectStore((s) => {
+    const img = s.objects.find((o) => o.type === 'image' && o.visible);
+    return img?.image ?? null;
+  });
   useEffect(() => {
-    if (image && !hasModels) {
-      fitToImage(image.width, image.height);
+    if (firstVisibleImage && !hasModels) {
+      fitToImage(firstVisibleImage.width, firstVisibleImage.height);
     }
-  }, [image, hasModels, fitToImage]);
+  }, [firstVisibleImage, hasModels, fitToImage]);
 
   // Image interaction handlers (for 2D drawing on image planes)
   const imageInteraction = useSceneInteraction();
@@ -594,7 +604,10 @@ function UnifiedSceneContent() {
 
   const modelMeasurements = useMemo(
     () => measurements.filter((m): m is Measurement =>
-      (m.type === 'reference' || m.type === 'measure') && (m as Measurement).surface === 'model' && m.visible !== false
+      (m.type === 'reference' || m.type === 'measure') &&
+      (m as Measurement).surface === 'model' &&
+      m.visible !== false &&
+      !(m as Measurement).combinedFrom
     ),
     [measurements]
   );
@@ -791,11 +804,10 @@ function CameraSwitch({ ortho }: { ortho: boolean }) {
 // ---- Main exported component ----
 
 export function UnifiedScene() {
-  const modelUrl = useCanvasStore((s) => s.modelUrl);
   const objects = useSceneObjectStore((s) => s.objects);
 
   // Auto-detect camera mode: perspective when any models are present
-  const hasModels = objects.some((o) => o.type === 'model') || !!modelUrl;
+  const hasModels = objects.some((o) => o.type === 'model');
 
   return (
     <div className="relative w-full h-full">

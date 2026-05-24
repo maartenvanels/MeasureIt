@@ -5,6 +5,7 @@ beforeEach(() => {
   useUIStore.setState({
     mode: 'none',
     selectedMeasurementId: null,
+    selectedMeasurementIds: [],
     sidebarOpen: true,
     helpDialogOpen: false,
     settingsDialogOpen: false,

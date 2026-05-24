@@ -17,7 +17,6 @@ import {
   DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
 import { useUIStore } from '@/stores/useUIStore';
-import { useCanvasStore } from '@/stores/useCanvasStore';
 import { useSceneObjectStore } from '@/stores/useSceneObjectStore';
 import { ToolGroupButton, type ToolOption } from './ToolGroupButton';
 import { DrawMode } from '@/types/measurement';
@@ -38,8 +37,6 @@ export function ModeButtons() {
   const lastAreaTool = useUIStore((s) => s.lastAreaTool);
   const cropMode = useUIStore((s) => s.cropMode);
   const setCropMode = useUIStore((s) => s.setCropMode);
-  const image = useCanvasStore((s) => s.image);
-  const modelUrl = useCanvasStore((s) => s.modelUrl);
   const gridEnabled = useUIStore((s) => s.gridEnabled);
   const gridSpacing = useUIStore((s) => s.gridSpacing);
   const toggleGrid = useUIStore((s) => s.toggleGrid);
@@ -51,8 +48,9 @@ export function ModeButtons() {
   const setTransformMode = useSceneObjectStore((s) => s.setTransformMode);
 
   // Auto-detect 3D mode from scene contents
-  const is3D = sceneObjects.some((o) => o.type === 'model') || !!modelUrl;
-  const hasTarget = is3D ? (!!modelUrl || sceneObjects.some((o) => o.type === 'model')) : (!!image || sceneObjects.some((o) => o.type === 'image'));
+  const is3D = sceneObjects.some((o) => o.type === 'model');
+  const hasTarget = sceneObjects.length > 0;
+  const hasImages = sceneObjects.some((o) => o.type === 'image');
 
   return (
     <div className="flex items-center gap-1">
@@ -97,7 +95,7 @@ export function ModeButtons() {
                 variant={mode === 'angle' ? 'default' : 'outline'}
                 size="sm"
                 onClick={() => toggleMode('angle')}
-                disabled={!image}
+                disabled={!hasImages}
                 className={mode === 'angle' ? 'bg-amber-600 hover:bg-amber-700 text-white' : ''}
               >
                 <TriangleRight className="mr-1.5 h-4 w-4" />
@@ -117,7 +115,7 @@ export function ModeButtons() {
                 toggleMode(m);
               }
             }}
-            disabled={!image}
+            disabled={!hasImages}
             activeClassName="bg-emerald-600 hover:bg-emerald-700 text-white"
             tooltip="Measure an area (P)"
           />
@@ -127,7 +125,7 @@ export function ModeButtons() {
                 variant={mode === 'annotation' ? 'default' : 'outline'}
                 size="sm"
                 onClick={() => toggleMode('annotation')}
-                disabled={!image}
+                disabled={!hasImages}
                 className={mode === 'annotation' ? 'bg-violet-600 hover:bg-violet-700 text-white' : ''}
               >
                 <StickyNote className="mr-1.5 h-4 w-4" />
@@ -147,7 +145,7 @@ export function ModeButtons() {
                 variant={cropMode ? 'default' : 'outline'}
                 size="sm"
                 onClick={() => setCropMode(!cropMode)}
-                disabled={!image}
+                disabled={!hasImages}
                 className={cropMode ? 'bg-orange-600 hover:bg-orange-700 text-white' : ''}
               >
                 <Crop className="mr-1.5 h-4 w-4" />
@@ -168,7 +166,7 @@ export function ModeButtons() {
               variant={gridEnabled ? 'default' : 'outline'}
               size="sm"
               onClick={toggleGrid}
-              disabled={!image}
+              disabled={!hasImages}
               className={`rounded-r-none ${gridEnabled ? 'bg-muted hover:bg-accent text-white' : ''}`}
             >
               <Grid3x3 className="mr-1.5 h-4 w-4" />
@@ -184,7 +182,7 @@ export function ModeButtons() {
                 <Button
                   variant={gridEnabled ? 'default' : 'outline'}
                   size="sm"
-                  disabled={!image}
+                  disabled={!hasImages}
                   className={`rounded-l-none border-l-0 px-1.5 ${gridEnabled ? 'bg-muted hover:bg-accent text-white' : ''}`}
                 >
                   <ChevronDown className="h-3.5 w-3.5" />

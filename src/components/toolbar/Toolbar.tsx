@@ -31,11 +31,9 @@ import { SavedProject, SavedProjectV2 } from '@/types/measurement';
 
 export function Toolbar() {
   const setHelpDialogOpen = useUIStore((s) => s.setHelpDialogOpen);
-  const image = useCanvasStore((s) => s.image);
-  const modelUrl = useCanvasStore((s) => s.modelUrl);
   const resetCanvas = useCanvasStore((s) => s.reset);
   const clearAll = useMeasurementStore((s) => s.clearAll);
-  const sceneObjectCount = useSceneObjectStore((s) => s.objects.length);
+  const hasContent = useSceneObjectStore((s) => s.objects.length > 0);
   const resetSceneObjects = useSceneObjectStore((s) => s.reset);
   const { saveProject, loadProject, listProjects, deleteProject } = useLocalStorage();
   const [projects, setProjects] = useState<(SavedProject | SavedProjectV2)[]>([]);
@@ -63,7 +61,7 @@ export function Toolbar() {
   };
 
   return (
-    <header className="flex items-center gap-3 border-b border-border bg-card px-4 py-2">
+    <header className="flex items-center gap-3 border-b border-border bg-card px-4 py-2 min-w-0 overflow-x-auto">
       <div className="flex items-center gap-2">
         <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-rose-600 text-sm font-bold text-white">
           M
@@ -108,7 +106,7 @@ export function Toolbar() {
           <Button
             variant="outline"
             size="sm"
-            disabled={!image && !modelUrl && sceneObjectCount === 0}
+            disabled={!hasContent}
             onClick={() => {
               if (confirm('Start over? All objects and measurements will be removed.')) {
                 clearAll();

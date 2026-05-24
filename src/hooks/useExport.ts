@@ -4,7 +4,6 @@ import { useCallback } from 'react';
 import { toast } from 'sonner';
 import { useMeasurementStore } from '@/stores/useMeasurementStore';
 import { useSceneObjectStore } from '@/stores/useSceneObjectStore';
-import { useCanvasStore } from '@/stores/useCanvasStore';
 import type { AnyMeasurement, Measurement } from '@/types/measurement';
 import type { RefResolver } from '@/lib/export-utils';
 import {
@@ -58,7 +57,7 @@ export function useExport() {
   }, []);
 
   const exportImage = useCallback(async () => {
-    const { image } = useCanvasStore.getState();
+    const image = useSceneObjectStore.getState().getFirstVisibleImage();
     if (!image) return;
     const { measurements } = useMeasurementStore.getState();
     const blob = await renderAnnotatedImage(image, measurements, buildResolver());

@@ -103,8 +103,6 @@ function restoreObjects(serialized: SerializedSceneObject[]): void {
           referenceUnit: savedObj.referenceUnit,
           order: savedObj.order,
         });
-        // Bridge: also populate old canvas store
-        useCanvasStore.getState().setImage(img, savedObj.name);
       };
       img.src = obj.imageDataUrl;
     } else if (obj.type === 'model') {

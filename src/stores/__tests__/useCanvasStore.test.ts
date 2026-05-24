@@ -3,8 +3,6 @@ import { useCanvasStore } from '../useCanvasStore';
 
 beforeEach(() => {
   useCanvasStore.setState({
-    image: null,
-    imageFileName: null,
     transform: { panX: 0, panY: 0, zoom: 1 },
     isDrawing: false,
     drawStart: null,

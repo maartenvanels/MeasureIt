@@ -48,6 +48,7 @@ const makeAngle = (): AngleMeasurement => ({
 const makeArea = (): AreaMeasurement => ({
   id: crypto.randomUUID(),
   type: 'area',
+  areaKind: 'polygon',
   points: [{ x: 0, y: 0 }, { x: 10, y: 0 }, { x: 10, y: 10 }, { x: 0, y: 10 }],
   pixelArea: 100,
   name: 'Area 1',
@@ -339,6 +340,144 @@ describe('useMeasurementStore', () => {
     it('updates reference unit', () => {
       useMeasurementStore.getState().setReferenceUnit('cm');
       expect(useMeasurementStore.getState().referenceUnit).toBe('cm');
+    });
+  });
+
+  describe('combineMeasurements', () => {
+    it('combines two connected measure lines into a total with summed length', () => {
+      const a = makeMeasurement({
+        id: 'a',
+        start: { x: 0, y: 0 },
+        end: { x: 100, y: 0 },
+        pixelLength: 100,
+        name: 'A',
+      });
+      const b = makeMeasurement({
+        id: 'b',
+        start: { x: 100, y: 0 },
+        end: { x: 100, y: 50 },
+        pixelLength: 50,
+        name: 'B',
+      });
+      const store = useMeasurementStore.getState();
+      store.addMeasurement(a);
+      store.addMeasurement(b);
+
+      const result = store.combineMeasurements(['a', 'b']);
+      expect(result.ok).toBe(true);
+
+      const combined = useMeasurementStore.getState().measurements.find(
+        (m) => m.type === 'measure' && (m as Measurement).combinedFrom?.includes('a')
+      ) as Measurement | undefined;
+      expect(combined).toBeDefined();
+      expect(combined?.pixelLength).toBe(150);
+      expect(combined?.combinedFrom).toEqual(['a', 'b']);
+    });
+
+    it('sums lengths regardless of whether endpoints touch', () => {
+      const a = makeMeasurement({
+        id: 'a',
+        start: { x: 0, y: 0 },
+        end: { x: 100, y: 0 },
+        pixelLength: 100,
+      });
+      const b = makeMeasurement({
+        id: 'b',
+        start: { x: 500, y: 500 },
+        end: { x: 600, y: 500 },
+        pixelLength: 100,
+      });
+      const store = useMeasurementStore.getState();
+      store.addMeasurement(a);
+      store.addMeasurement(b);
+
+      const result = store.combineMeasurements(['a', 'b']);
+      expect(result.ok).toBe(true);
+      const combined = useMeasurementStore.getState().measurements.find(
+        (m) => m.type === 'measure' && (m as Measurement).combinedFrom?.includes('a')
+      ) as Measurement | undefined;
+      expect(combined?.pixelLength).toBe(200);
+    });
+
+    it('refuses combining reference-type', () => {
+      const ref = { ...makeReference(), id: 'r' };
+      const a = makeMeasurement({ id: 'a' });
+      const store = useMeasurementStore.getState();
+      store.addMeasurement(ref);
+      store.addMeasurement(a);
+
+      const result = store.combineMeasurements(['r', 'a']);
+      expect(result.ok).toBe(false);
+    });
+
+    it('combines a chain of 3+ connected measurements', () => {
+      const a = makeMeasurement({ id: 'a', start: { x: 0, y: 0 }, end: { x: 10, y: 0 }, pixelLength: 10 });
+      const b = makeMeasurement({ id: 'b', start: { x: 10, y: 0 }, end: { x: 10, y: 5 }, pixelLength: 5 });
+      const c = makeMeasurement({ id: 'c', start: { x: 10, y: 5 }, end: { x: 30, y: 5 }, pixelLength: 20 });
+      const store = useMeasurementStore.getState();
+      store.addMeasurement(a);
+      store.addMeasurement(b);
+      store.addMeasurement(c);
+
+      const result = store.combineMeasurements(['a', 'b', 'c']);
+      expect(result.ok).toBe(true);
+      const combined = useMeasurementStore.getState().measurements.find(
+        (m) => m.type === 'measure' && (m as Measurement).combinedFrom?.includes('a')
+      ) as Measurement | undefined;
+      expect(combined?.pixelLength).toBe(35);
+      expect(combined?.combinedFrom).toEqual(['a', 'b', 'c']);
+    });
+
+    it('refuses combining an already-combined total', () => {
+      const a = makeMeasurement({ id: 'a', start: { x: 0, y: 0 }, end: { x: 10, y: 0 }, pixelLength: 10 });
+      const b = makeMeasurement({ id: 'b', start: { x: 10, y: 0 }, end: { x: 10, y: 5 }, pixelLength: 5 });
+      const c = makeMeasurement({ id: 'c', start: { x: 10, y: 5 }, end: { x: 20, y: 5 }, pixelLength: 10 });
+      const store = useMeasurementStore.getState();
+      store.addMeasurement(a);
+      store.addMeasurement(b);
+      store.addMeasurement(c);
+
+      const first = store.combineMeasurements(['a', 'b']);
+      expect(first.ok).toBe(true);
+      const totalId = first.ok ? first.id : '';
+
+      const second = store.combineMeasurements([totalId, 'c']);
+      expect(second.ok).toBe(false);
+    });
+
+    it('cascade-deletes combined when a constituent is removed', () => {
+      const a = makeMeasurement({
+        id: 'a',
+        start: { x: 0, y: 0 },
+        end: { x: 10, y: 0 },
+        pixelLength: 10,
+      });
+      const b = makeMeasurement({
+        id: 'b',
+        start: { x: 10, y: 0 },
+        end: { x: 20, y: 0 },
+        pixelLength: 10,
+      });
+      const store = useMeasurementStore.getState();
+      store.addMeasurement(a);
+      store.addMeasurement(b);
+      const result = store.combineMeasurements(['a', 'b']);
+      expect(result.ok).toBe(true);
+      const combinedId = result.ok ? result.id : '';
+
+      useMeasurementStore.getState().removeMeasurement('a');
+      const found = useMeasurementStore.getState().measurements.find((m) => m.id === combinedId);
+      expect(found).toBeUndefined();
+    });
+
+    it('refuses combining measurements on different surfaces', () => {
+      const a = makeMeasurement({ id: 'a', surface: 'image', surfaceId: 'obj1' });
+      const b = makeMeasurement({ id: 'b', surface: 'image', surfaceId: 'obj2' });
+      const store = useMeasurementStore.getState();
+      store.addMeasurement(a);
+      store.addMeasurement(b);
+      const result = store.combineMeasurements(['a', 'b']);
+      expect(result.ok).toBe(false);
     });
   });
 });

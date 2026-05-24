@@ -4,6 +4,7 @@ import { useEffect } from 'react';
 import { useUIStore } from '@/stores/useUIStore';
 import { useMeasurementStore } from '@/stores/useMeasurementStore';
 import { useCanvasStore } from '@/stores/useCanvasStore';
+import { useSceneObjectStore } from '@/stores/useSceneObjectStore';
 
 export function useKeyboardShortcuts() {
   useEffect(() => {
@@ -73,10 +74,13 @@ export function useKeyboardShortcuts() {
         case 'z':
           if (e.ctrlKey || e.metaKey) {
             e.preventDefault();
+            const sceneStore = useSceneObjectStore.getState();
             if (e.shiftKey) {
-              redo();
+              // Redo: scene-object first, then measurement
+              if (!sceneStore.redo()) redo();
             } else {
-              undo();
+              // Undo: scene-object first (most recent transform), then measurement
+              if (!sceneStore.undo()) undo();
             }
           }
           break;

@@ -1,7 +1,6 @@
 'use client';
 
 import { useCallback } from 'react';
-import { useCanvasStore } from '@/stores/useCanvasStore';
 import { useSceneObjectStore } from '@/stores/useSceneObjectStore';
 
 const MODEL_EXTENSIONS: Record<string, 'glb' | 'stl'> = {
@@ -20,7 +19,6 @@ export function isModelFile(file: File): boolean {
 }
 
 export function use3DModelLoader() {
-  const setModel = useCanvasStore((s) => s.setModel);
   const addModel = useSceneObjectStore((s) => s.addModel);
 
   const loadFromFile = useCallback(
@@ -29,11 +27,9 @@ export function use3DModelLoader() {
       if (!fileType) return;
 
       const url = URL.createObjectURL(file);
-      // Bridge: populate both stores during migration
-      setModel(url, file.name, fileType);
       addModel(url, file.name, fileType);
     },
-    [setModel, addModel]
+    [addModel]
   );
 
   const loadFromDrop = useCallback(

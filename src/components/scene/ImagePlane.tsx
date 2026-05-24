@@ -20,27 +20,20 @@ interface ImagePlaneProps {
  * Image top-left (0,0) maps to world (0, 0, 0).
  * Image point (x, y) maps to world (x, -y, 0).
  *
- * UV is flipped so the image isn't mirrored vertically.
+ * The plane is positioned at [w/2, -h/2] so its top edge sits on y=0 (where
+ * image y=0 maps). With Texture.flipY=true (default), UV (0,1) samples the
+ * image's top-left pixel — which matches the geometry's top-left vertex
+ * after the position offset. No UV remapping needed.
  */
 export function ImagePlane({ image, onPointerDown, onPointerMove, onPointerUp, onPointerLeave, onDoubleClick }: ImagePlaneProps) {
   const { texture, geometry } = useMemo(() => {
-    // Create texture from image
     const tex = new THREE.Texture(image);
     tex.needsUpdate = true;
     tex.colorSpace = THREE.SRGBColorSpace;
     tex.minFilter = THREE.LinearFilter;
     tex.magFilter = THREE.LinearFilter;
 
-    // Create plane geometry sized to image pixels
     const geo = new THREE.PlaneGeometry(image.width, image.height);
-
-    // Flip UV Y so image top-left = geometry top-left
-    const uv = geo.getAttribute('uv');
-    for (let i = 0; i < uv.count; i++) {
-      uv.setY(i, 1 - uv.getY(i));
-    }
-    uv.needsUpdate = true;
-
     return { texture: tex, geometry: geo };
   }, [image]);
 

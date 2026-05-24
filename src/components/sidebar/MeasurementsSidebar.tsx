@@ -3,6 +3,7 @@
 import { useUIStore } from '@/stores/useUIStore';
 import { SceneBrowser } from './SceneBrowser';
 import { ShortcutsFooter } from './ShortcutsFooter';
+import { CombineSelectionBar } from './CombineSelectionBar';
 
 export function MeasurementsSidebar() {
   const sidebarOpen = useUIStore((s) => s.sidebarOpen);
@@ -17,6 +18,7 @@ export function MeasurementsSidebar() {
           Scene Browser
         </h2>
       </div>
+      <CombineSelectionBar />
       <SceneBrowser />
       <ShortcutsFooter />
     </aside>

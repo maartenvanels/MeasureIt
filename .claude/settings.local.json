@@ -4,7 +4,10 @@
       "Bash(npx next build:*)",
       "Bash(bun add:*)",
       "Bash(bun run build:*)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(bun run test)",
+      "Bash(git push:*)"
     ]
   }
 }

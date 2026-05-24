@@ -295,6 +295,7 @@ export function useSceneInteraction() {
       const mode = useUIStore.getState().mode;
       const z = (cameraRef.current as THREE.OrthographicCamera).zoom || 1;
       const threshold = 12 / z;
+      const endpointThreshold = 20 / z;
 
       // Crop mode
       if (useUIStore.getState().cropMode && e.button === 0) {
@@ -339,7 +340,7 @@ export function useSceneInteraction() {
         );
         for (const line of lines) {
           for (const ep of ['start', 'end'] as const) {
-            if (pixelDist(imgPt, line[ep]) < threshold) {
+            if (pixelDist(imgPt, line[ep]) < endpointThreshold) {
               e.stopPropagation();
               endpointDrag.current = {
                 measurementId: line.id,

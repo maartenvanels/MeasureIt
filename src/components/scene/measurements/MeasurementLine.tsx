@@ -40,18 +40,29 @@ function EndMarker({ position, angle, color, zoom }: {
   );
 }
 
-/** Dot at measurement endpoints */
-function EndDot({ position, color, zoom }: {
+/** Dot at measurement endpoints. When selected, a larger halo signals it can be grabbed. */
+function EndDot({ position, color, zoom, selected }: {
   position: [number, number, number];
   color: string;
   zoom: number;
+  selected: boolean;
 }) {
-  const radius = 4 / zoom;
+  const radius = (selected ? 6 : 4) / zoom;
+  const haloOuter = 12 / zoom;
+  const haloInner = 8 / zoom;
   return (
-    <mesh position={position}>
-      <circleGeometry args={[radius, 16]} />
-      <meshBasicMaterial color={color} />
-    </mesh>
+    <group position={position}>
+      {selected && (
+        <mesh position={[0, 0, -0.001]}>
+          <ringGeometry args={[haloInner, haloOuter, 24]} />
+          <meshBasicMaterial color={color} transparent opacity={0.35} />
+        </mesh>
+      )}
+      <mesh>
+        <circleGeometry args={[radius, 16]} />
+        <meshBasicMaterial color={color} />
+      </mesh>
+    </group>
   );
 }
 
@@ -91,8 +102,8 @@ export function MeasurementLineComponent({ measurement, label, selected }: Measu
       {/* End markers */}
       <EndMarker position={startPos} angle={angle} color={color} zoom={zoom} />
       <EndMarker position={endPos} angle={angle + Math.PI} color={color} zoom={zoom} />
-      <EndDot position={startPos} color={color} zoom={zoom} />
-      <EndDot position={endPos} color={color} zoom={zoom} />
+      <EndDot position={startPos} color={color} zoom={zoom} selected={selected} />
+      <EndDot position={endPos} color={color} zoom={zoom} selected={selected} />
 
       {/* Value label */}
       <DraggableLabel

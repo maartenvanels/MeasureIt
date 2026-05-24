@@ -1,8 +1,9 @@
 'use client';
 
-import { ChevronDown, ChevronRight, Eye, EyeOff, Lock, Unlock, ImageIcon, Box, Grid3X3 } from 'lucide-react';
+import { ChevronDown, ChevronRight, Eye, EyeOff, Lock, Unlock, ImageIcon, Box, Grid3X3, Trash2 } from 'lucide-react';
 import { useUIStore } from '@/stores/useUIStore';
 import { useSceneObjectStore } from '@/stores/useSceneObjectStore';
+import { useMeasurementStore } from '@/stores/useMeasurementStore';
 
 interface Props {
   label: string;
@@ -27,6 +28,22 @@ export function SceneTreeTopLevel({ label, type, objectId, children }: Props) {
   const setActiveObject = useSceneObjectStore((s) => s.setActiveObject);
   const toggleObjectVisibility = useSceneObjectStore((s) => s.toggleObjectVisibility);
   const toggleObjectLocked = useSceneObjectStore((s) => s.toggleObjectLocked);
+  const removeObject = useSceneObjectStore((s) => s.removeObject);
+  const measurements = useMeasurementStore((s) => s.measurements);
+
+  const handleDeleteObject = () => {
+    if (!objectId || locked) return;
+    const ownedMeasurements = measurements.filter((m) => m.surfaceId === objectId).length;
+    const confirmMsg = ownedMeasurements > 0
+      ? `Delete "${label}" and its ${ownedMeasurements} measurement${ownedMeasurements === 1 ? '' : 's'}?`
+      : `Delete "${label}"?`;
+    if (!confirm(confirmMsg)) return;
+    const mStore = useMeasurementStore.getState();
+    for (const m of measurements) {
+      if (m.surfaceId === objectId) mStore.removeMeasurement(m.id);
+    }
+    removeObject(objectId);
+  };
 
   const visible = objectId && sceneObject
     ? sceneObject.visible
@@ -107,6 +124,18 @@ export function SceneTreeTopLevel({ label, type, objectId, children }: Props) {
             <EyeOff className="h-3.5 w-3.5" />
           )}
         </button>
+
+        {/* Delete object (with measurements) */}
+        {objectId && (
+          <button
+            onClick={(e) => { e.stopPropagation(); handleDeleteObject(); }}
+            disabled={locked}
+            className="p-0.5 rounded opacity-0 transition-opacity group-hover:opacity-100 hover:bg-rose-500/20 disabled:opacity-30"
+            title={locked ? 'Unlock first to delete' : 'Delete object and its measurements'}
+          >
+            <Trash2 className="h-3.5 w-3.5 text-rose-400" />
+          </button>
+        )}
       </div>
       {!isLeaf && !collapsed && (
         <div className="ml-3 border-l border-border/50 pl-1">

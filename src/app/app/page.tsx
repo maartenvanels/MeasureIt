@@ -1,6 +1,7 @@
 'use client';
 
 import { Toolbar } from '@/components/toolbar/Toolbar';
+import { SelectedMeasurementBar } from '@/components/toolbar/SelectedMeasurementBar';
 import { CanvasContainer } from '@/components/canvas/CanvasContainer';
 import { MeasurementsSidebar } from '@/components/sidebar/MeasurementsSidebar';
 import { SidebarResizeHandle } from '@/components/sidebar/SidebarResizeHandle';
@@ -14,8 +15,9 @@ export default function AppPage() {
   useKeyboardShortcuts();
 
   return (
-    <div className="flex h-screen flex-col overflow-hidden bg-background">
+    <div className="relative flex h-screen w-screen flex-col overflow-hidden bg-background">
       <Toolbar />
+      <SelectedMeasurementBar />
       <div className="flex flex-1 overflow-hidden">
         <CanvasContainer />
         <SidebarResizeHandle />

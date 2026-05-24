@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useCallback } from 'react';
+import { useEffect, useCallback, useRef } from 'react';
 import { TransformControls } from '@react-three/drei';
 import { useSceneObjectStore } from '@/stores/useSceneObjectStore';
 import type { Event as ThreeEvent } from 'three';
@@ -16,6 +16,8 @@ export function TransformGizmo() {
   const objectRefs = useSceneObjectStore((s) => s.objectRefs);
   const objects = useSceneObjectStore((s) => s.objects);
   const setTransform = useSceneObjectStore((s) => s.setTransform);
+  const pushHistory = useSceneObjectStore((s) => s.pushHistory);
+  const draggingRef = useRef(false);
 
   const selectedObject = objects.find((o) => o.id === selectedObjectId);
   const isLocked = selectedObject?.locked ?? false;
@@ -35,6 +37,17 @@ export function TransformGizmo() {
     },
     [selectedObjectId, target, setTransform],
   );
+
+  // Snapshot state once at the start of each drag for one undoable step per interaction.
+  const handleMouseDown = useCallback(() => {
+    if (draggingRef.current) return;
+    draggingRef.current = true;
+    pushHistory();
+  }, [pushHistory]);
+
+  const handleMouseUp = useCallback(() => {
+    draggingRef.current = false;
+  }, []);
 
   // Keyboard shortcuts for transform modes
   useEffect(() => {
@@ -58,6 +71,8 @@ export function TransformGizmo() {
       object={target}
       mode={transformMode}
       onObjectChange={handleObjectChange}
+      onMouseDown={handleMouseDown}
+      onMouseUp={handleMouseUp}
       space="local"
     />
   );

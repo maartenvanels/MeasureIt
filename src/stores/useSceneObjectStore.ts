@@ -10,6 +10,15 @@ interface SceneObjectState {
   selectedObjectId: string | null;
   transformMode: 'translate' | 'rotate' | 'scale';
 
+  // Undo/redo history for object transforms (and other persistent changes)
+  past: SceneObject[][];
+  future: SceneObject[][];
+  /** Timestamp of last push, used by the Ctrl+Z router to pick the most recent action. */
+  lastChangeAt: number;
+  pushHistory: () => void;
+  undo: () => boolean;
+  redo: () => boolean;
+
   // Object ref registry for TransformControls
   objectRefs: Map<string, React.RefObject<THREE.Group | null>>;
 
@@ -36,6 +45,10 @@ interface SceneObjectState {
   getImages: () => SceneObject[];
   getModels: () => SceneObject[];
   getActiveObject: () => SceneObject | undefined;
+  getActiveImage: () => HTMLImageElement | null;
+  getFirstVisibleImage: () => HTMLImageElement | null;
+  hasContent: () => boolean;
+  hasModels: () => boolean;
 
   reset: () => void;
 }
@@ -45,7 +58,43 @@ export const useSceneObjectStore = create<SceneObjectState>((set, get) => ({
   activeObjectId: null,
   selectedObjectId: null,
   transformMode: 'translate',
+  past: [],
+  future: [],
+  lastChangeAt: 0,
   objectRefs: new Map(),
+
+  pushHistory: () => {
+    const { objects, past } = get();
+    set({
+      past: [...past, objects].slice(-50),
+      future: [],
+      lastChangeAt: Date.now(),
+    });
+  },
+
+  undo: () => {
+    const { past, future, objects } = get();
+    if (past.length === 0) return false;
+    const previous = past[past.length - 1];
+    set({
+      objects: previous,
+      past: past.slice(0, -1),
+      future: [objects, ...future].slice(0, 50),
+    });
+    return true;
+  },
+
+  redo: () => {
+    const { past, future, objects } = get();
+    if (future.length === 0) return false;
+    const next = future[0];
+    set({
+      objects: next,
+      past: [...past, objects].slice(-50),
+      future: future.slice(1),
+    });
+    return true;
+  },
 
   addImage: (image, fileName, dataUrl) => {
     const id = crypto.randomUUID();
@@ -199,6 +248,16 @@ export const useSceneObjectStore = create<SceneObjectState>((set, get) => ({
     const { objects, activeObjectId } = get();
     return activeObjectId ? objects.find((o) => o.id === activeObjectId) : undefined;
   },
+  getActiveImage: () => {
+    const obj = get().getActiveObject();
+    return (obj?.type === 'image' ? obj.image : null) ?? null;
+  },
+  getFirstVisibleImage: () => {
+    const img = get().objects.find((o) => o.type === 'image' && o.visible);
+    return img?.image ?? null;
+  },
+  hasContent: () => get().objects.length > 0,
+  hasModels: () => get().objects.some((o) => o.type === 'model'),
 
   reset: () => {
     const { objects } = get();

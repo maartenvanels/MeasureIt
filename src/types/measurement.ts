@@ -4,7 +4,6 @@ export type DrawMode =
   | 'reference' | 'measure' | 'angle'
   | 'area' | 'area-polygon' | 'area-freehand' | 'area-circle-3pt' | 'area-circle-center'
   | 'annotation';
-export type ViewMode = '2d' | '3d';
 export type Unit = 'mm' | 'cm' | 'm' | 'in' | 'px';
 
 /** Which surface a measurement was drawn on */
@@ -75,6 +74,8 @@ export interface Measurement {
   locked?: boolean;
   /** Links to a specific SceneObject.id */
   surfaceId?: string;
+  /** If present, this is a virtual sum of the listed constituent measurement ids. */
+  combinedFrom?: string[];
 }
 
 export interface AngleMeasurement {

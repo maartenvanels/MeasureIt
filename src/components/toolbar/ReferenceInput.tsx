@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import { Input } from '@/components/ui/input';
 import {
   Select,
@@ -37,7 +38,15 @@ export function ReferenceInput() {
   const referenceValue = activeObject?.referenceValue ?? globalRefValue;
   const referenceUnit = activeObject?.referenceUnit ?? globalRefUnit;
 
-  const handleValueChange = (value: number) => {
+  // Local draft buffer so the user can clear the field while editing.
+  // Sync from store when not focused (e.g. activeObject changes).
+  const [draft, setDraft] = useState<string>(String(referenceValue));
+  const [focused, setFocused] = useState(false);
+  useEffect(() => {
+    if (!focused) setDraft(String(referenceValue));
+  }, [referenceValue, focused]);
+
+  const commitValue = (value: number) => {
     if (activeObject) {
       setObjectRefValue(activeObject.id, value);
     }
@@ -57,8 +66,27 @@ export function ReferenceInput() {
       <span className="text-xs text-muted-foreground">Ref:</span>
       <Input
         type="number"
-        value={referenceValue}
-        onChange={(e) => handleValueChange(parseFloat(e.target.value) || 0)}
+        value={draft}
+        onFocus={() => setFocused(true)}
+        onBlur={() => {
+          setFocused(false);
+          const parsed = parseFloat(draft);
+          if (Number.isFinite(parsed) && parsed > 0) {
+            commitValue(parsed);
+            setDraft(String(parsed));
+          } else {
+            // Restore last valid value on empty/invalid blur
+            setDraft(String(referenceValue));
+          }
+        }}
+        onChange={(e) => {
+          const next = e.target.value;
+          setDraft(next);
+          const parsed = parseFloat(next);
+          if (Number.isFinite(parsed) && parsed > 0) {
+            commitValue(parsed);
+          }
+        }}
         className="h-7 w-20 border-0 bg-transparent p-0 text-center text-sm font-semibold text-rose-500 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
       />
       <Select

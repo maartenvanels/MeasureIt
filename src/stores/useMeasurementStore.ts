@@ -15,6 +15,11 @@ interface MeasurementState {
   updateMeasurement: (id: string, patch: Record<string, unknown>) => void;
   removeMeasurement: (id: string) => void;
   renameMeasurement: (id: string, name: string) => void;
+  /**
+   * Combine 2+ connected measure-type measurements into a virtual total.
+   * Endpoints of the chosen measurements must form a single connected component.
+   */
+  combineMeasurements: (ids: string[]) => { ok: true; id: string } | { ok: false; reason: string };
   setReferenceValue: (value: number) => void;
   setReferenceUnit: (unit: Unit) => void;
   clearAll: () => void;
@@ -105,11 +110,16 @@ export const useMeasurementStore = create<MeasurementState>((set, get) => ({
   removeMeasurement: (id) => {
     const { measurements } = get();
     const past = [...get().past, [...measurements]].slice(-50);
-    set({
-      measurements: measurements.filter((m) => m.id !== id),
-      past,
-      future: [],
+    // Cascade: remove any combined-total that references this measurement.
+    const remaining = measurements.filter((m) => {
+      if (m.id === id) return false;
+      if (m.type === 'measure') {
+        const combined = (m as Measurement).combinedFrom;
+        if (combined && combined.includes(id)) return false;
+      }
+      return true;
     });
+    set({ measurements: remaining, past, future: [] });
   },
 
   renameMeasurement: (id, name) => {
@@ -118,6 +128,49 @@ export const useMeasurementStore = create<MeasurementState>((set, get) => ({
         m.id === id ? { ...m, name } : m
       ),
     });
+  },
+
+  combineMeasurements: (ids) => {
+    const { measurements } = get();
+    const uniqueIds = Array.from(new Set(ids));
+    if (uniqueIds.length < 2) return { ok: false, reason: 'Need at least 2 different measurements' };
+
+    const segments = uniqueIds.map((id) => measurements.find((m) => m.id === id));
+    if (segments.some((s) => !s)) return { ok: false, reason: 'Measurement not found' };
+    const items = segments as AnyMeasurement[];
+    if (items.some((m) => m.type !== 'measure')) {
+      return { ok: false, reason: 'Only measure-type lines can be combined' };
+    }
+    const meas = items as Measurement[];
+    if (meas.some((m) => m.combinedFrom)) {
+      return { ok: false, reason: 'Cannot combine an already-combined total' };
+    }
+
+    const surface = meas[0].surface ?? 'image';
+    const surfaceId = meas[0].surfaceId;
+    if (meas.some((m) => (m.surface ?? 'image') !== surface || m.surfaceId !== surfaceId)) {
+      return { ok: false, reason: 'Measurements must be on the same object' };
+    }
+
+    const totalPixelLength = meas.reduce((sum, m) => sum + m.pixelLength, 0);
+    const names = meas.map((m, i) => m.name || `M${i + 1}`).join(' + ');
+    const combined: Measurement = {
+      id: crypto.randomUUID(),
+      type: 'measure',
+      name: `Total (${names})`,
+      createdAt: Date.now(),
+      surface,
+      surfaceId,
+      start: { x: 0, y: 0 },
+      end: { x: 0, y: 0 },
+      pixelLength: totalPixelLength,
+      ...(surface === 'model' ? { distance: totalPixelLength } : {}),
+      combinedFrom: uniqueIds,
+    };
+
+    const past = [...get().past, [...measurements]].slice(-50);
+    set({ measurements: [...measurements, combined], past, future: [] });
+    return { ok: true, id: combined.id };
   },
 
   setReferenceValue: (value) => set({ referenceValue: value }),

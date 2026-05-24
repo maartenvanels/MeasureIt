@@ -21,7 +21,7 @@ const angle: AngleMeasurement = {
 };
 
 const area: AreaMeasurement = {
-  id: 'ar1', type: 'area',
+  id: 'ar1', type: 'area', areaKind: 'polygon',
   points: [{ x: 0, y: 0 }, { x: 10, y: 0 }, { x: 10, y: 10 }, { x: 0, y: 10 }],
   pixelArea: 100, name: 'Floor', createdAt: 0,
 };
